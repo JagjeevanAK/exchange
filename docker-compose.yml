@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: exchange-postgres
+    environment:
+      POSTGRES_DB: exchange
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for pub/sub and caching
+  redis:
+    image: redis:7-alpine
+    container_name: exchange-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # API Server
+  server:
+    build:
+      context: ./backend/server
+      dockerfile: Dockerfile
+    container_name: exchange-server
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/exchange
+      - PORT=3000
+      - JWT_SECRET=your-jwt-secret-key
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/server:/app
+      - /app/node_modules
+      - /app/generated
+    command: bun run dev
+    restart: unless-stopped
+
+  # Data Poller Service
+  poller:
+    build:
+      context: ./backend/poller
+      dockerfile: Dockerfile
+    container_name: exchange-poller
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/exchange
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/poller:/app
+      - /app/node_modules
+    command: bun run dev
+    restart: unless-stopped
+
+  # WebSocket Gateway
+  ws-gateway:
+    build:
+      context: ./backend/ws-gateway
+      dockerfile: Dockerfile
+    container_name: exchange-ws-gateway
+    environment:
+      - PORT=8080
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=development
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/ws-gateway:/app
+      - /app/node_modules
+    command: bun run dev
+    restart: unless-stopped
+
+  # Frontend (if needed)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: exchange-frontend
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:3000
+  #     - REACT_APP_WS_URL=ws://localhost:8080
+  #   depends_on:
+  #     - server
+  #     - ws-gateway
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   command: npm start
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: exchange-network
