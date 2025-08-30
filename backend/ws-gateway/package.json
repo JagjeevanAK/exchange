@@ -1,0 +1,17 @@
+{
+  "name": "ws-gateway",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "ioredis": "^5.7.0",
+    "ws": "^8.18.3"
+  }
+}

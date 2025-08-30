@@ -1,0 +1,21 @@
+{
+  "name": "poller",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.15.5",
+    "@types/ws": "^8.18.1",
+    "@types/ioredis": "^5.0.0",
+    "tsx": "^4.20.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "ioredis": "^5.7.0",
+    "pg": "^8.16.3",
+    "ws": "^8.18.3"
+  }
+}
