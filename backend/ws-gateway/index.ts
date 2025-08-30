@@ -56,7 +56,7 @@ const addClientToSymbol = (ws: WebSocket, symbols: string[]) => {
     ws.send(JSON.stringify([...symbols]));
 }
 
-const detachClient = (ws: WebSocket, symbols?: string[]) =>{
+const detachClientFromSymbols = (ws: WebSocket, symbols?: string[]) =>{
     const set = clientSymbol.get(ws);
 
     if(!set || set.size == 0) return;
@@ -83,20 +83,75 @@ const detachClient = (ws: WebSocket, symbols?: string[]) =>{
 }
 
 async function start() {
-    await sub.connect().catch(console.error);
-    
-    sub.on('message',(channel, msg)=>{
+    sub.on('message', (channel, msg) => {
+        try {
+            const payload = JSON.parse(msg);
+            const client = symbolClient.get(channel);
 
-    })
+            if (!client || client.size === 0) {
+                console.log("No Client is subscribed currently");
+                return;
+            }
 
-    sub.on('error',(e)=> console.error(e));
+            for (const ws of client) {
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(JSON.stringify(payload));
+                } else {
+                    client.delete(ws);
+                    detachClientFromSymbols(ws);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
 
-    sub.on('disconnect',()=> console.log("Poller Subscriber is okay"));
+    sub.on('error', (e) => console.error('Redis error:', e));
+    sub.on('end', () => console.log("Redis connection closed"));
+    sub.on('reconnecting', () => console.log("Reconnecting to Redis..."));
 
-    const ws = new WebSocketServer({port : parseInt(PORT, 10)});
+    const wss = new WebSocketServer({ port: parseInt(PORT, 10) });
+    console.log(`WebSocket server running on port ${PORT}`);
 
+    wss.on('connection', (ws) => {
+        ws.on('error', (err) => console.error('WebSocket error:', err));
 
+        ws.on('message', (buf) => {
+            try {
+                const msg = JSON.parse(buf.toString());
 
+                switch (msg.op) {
+                    case 'subscribe': {
+                        const symbols = Array.isArray(msg.symbols) ? msg.symbols : [];
+                        addClientToSymbol(ws, symbols.map((s: string) => s.toUpperCase()));
+                        ws.send(JSON.stringify({ op: 'subscribed', symbols }));
+                        break;
+                    }
+                    case 'unsubscribe': {
+                        const symbols = Array.isArray(msg.symbols) ? msg.symbols : undefined;
+                        detachClientFromSymbols(ws, symbols ? symbols.map((s: string) => s.toUpperCase()) : undefined);
+                        ws.send(JSON.stringify({ op: 'unsubscribed', symbols }));
+                        break;
+                    }
+                    default:
+                        if (ws.readyState === ws.OPEN) {
+                            ws.send(JSON.stringify({ op: 'error', code: 'UNSUPPORTED_OP' }));
+                        }
+                }
+
+            } catch (error) {
+                console.error('Error parsing message:', error);
+                if (ws.readyState === ws.OPEN) {
+                    ws.send(JSON.stringify({ op: 'error', code: 'INVALID_MESSAGE' }));
+                }
+            }
+        });
+
+        ws.on("close", () => detachClientFromSymbols(ws));
+    });
 }
 
-start();
+start().catch((e) => {
+    console.error(e);
+    process.exit(1);
+});
