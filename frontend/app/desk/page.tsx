@@ -1,6 +1,8 @@
 'use client';
 import MainChart from "@/components/desk/Chart"
 import ChartNav from "@/components/desk/Chart-nav"
+import LiveMarket from "@/components/desk/Livemarket";
+import OrderBook from "@/components/desk/OrderBook";
 import Orders from "@/components/desk/Orders"
 import { OrdersProvider, useOrders } from "@/components/desk/OrdersContext"
 import {
@@ -48,8 +50,15 @@ function DeskContent() {
                     </div>
                 </ResizablePanel>
                 <ResizableHandle />
-                <ResizablePanel defaultSize={25} minSize={10} maxSize={40} className="bg-gray-100 ">
-                    <div className="p-4">Navbar / Sidebar</div>
+                <ResizablePanel defaultSize={25} minSize={10} maxSize={40} className="bg-gray-100">
+                    <div className="h-full overflow-y-auto">
+                        <div className="p-4">
+                            <LiveMarket />
+                        </div>
+                        <div className="p-4 border-t">
+                            <OrderBook />
+                        </div>
+                    </div>
                 </ResizablePanel>
             </ResizablePanelGroup>
         </div>

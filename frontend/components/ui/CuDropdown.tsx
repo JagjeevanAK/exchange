@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SymbolOption {
     key: string;
@@ -14,7 +15,9 @@ interface CustomDropdownProps {
 
 const CustomDropdown = ({ value, onChange, options }: CustomDropdownProps) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
 
     const selectedOption = options.find(option => option.key === value);
 
@@ -29,12 +32,28 @@ const CustomDropdown = ({ value, onChange, options }: CustomDropdownProps) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        if (isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect.top - 4, // Position above the button with small gap
+                left: rect.left,
+                width: rect.width
+            });
+        }
+    }, [isOpen]);
+
+    const handleToggle = () => {
+        setIsOpen(!isOpen);
+    };
+
     return (
         <div className="relative" ref={dropdownRef}>
             {/* Dropdown Trigger */}
             <button
+                ref={buttonRef}
                 type="button"
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleToggle}
                 className="px-3 py-2 border border-dashed border-[#202020] bg-[#101010] text-white focus:outline-none focus:border-[#808080] transition-colors font-mono flex items-center gap-2 min-w-[140px] justify-between"
             >
                 <div className="flex items-center gap-2">
@@ -53,9 +72,17 @@ const CustomDropdown = ({ value, onChange, options }: CustomDropdownProps) => {
                 </svg>
             </button>
 
-            {/* Dropdown Menu */}
-            {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 border border-dashed border-[#202020] bg-[#101010] z-50">
+            {/* Dropdown Menu using Portal */}
+            {isOpen && typeof window !== 'undefined' && createPortal(
+                <div 
+                    className="fixed border border-dashed border-[#202020] bg-[#101010] z-[9999]"
+                    style={{
+                        top: dropdownPosition.top,
+                        left: dropdownPosition.left,
+                        width: dropdownPosition.width,
+                        transform: 'translateY(-100%)'
+                    }}
+                >
                     {options.map((option) => (
                         <button
                             key={option.key}
@@ -74,7 +101,8 @@ const CustomDropdown = ({ value, onChange, options }: CustomDropdownProps) => {
                             <span className="font-mono text-white">{option.label}</span>
                         </button>
                     ))}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
