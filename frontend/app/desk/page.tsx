@@ -13,8 +13,9 @@ function DeskContent() {
     const { isOrdersCollapsed } = useOrders();
     
     // Adjust panel sizes based on orders drawer state
-    const chartSize = isOrdersCollapsed ? 95 : 70;
-    const ordersSize = isOrdersCollapsed ? 5 : 30;
+    // When collapsed, we only need space for the orders header bar (~48px)
+    const chartSize = isOrdersCollapsed ? 92 : 70;
+    const ordersSize = isOrdersCollapsed ? 8 : 30;
 
     return (
         <div className="fixed inset-0 overflow-hidden">
@@ -34,7 +35,7 @@ function DeskContent() {
                             <ResizableHandle />
                             <ResizablePanel 
                                 defaultSize={ordersSize} 
-                                minSize={5} 
+                                minSize={isOrdersCollapsed ? 8 : 15} 
                                 maxSize={50}
                                 key={`orders-${isOrdersCollapsed ? 'collapsed' : 'expanded'}`}
                             >
