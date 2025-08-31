@@ -1,8 +1,6 @@
 import axios from "axios";
 
-const endpoint = process.env.NODE_ENV === "production"
-    ? process.env.BACKEND_URL
-    : "http://localhost:3001";
+const endpoint = process.env.NODE_ENV === "production" ? process.env.BACKEND_URL : "http://localhost:3001";
 
 const getAuthToken = (): string | null => {
     if (typeof window !== 'undefined') {
