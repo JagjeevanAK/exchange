@@ -46,16 +46,30 @@ export default function Orders() {
 
     return (
         <div className="relative h-full overflow-hidden">
-            {/* Always visible trigger bar */}
-            <div className="flex items-center justify-between p-2 bg-white border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
-                 onClick={toggleDrawer}>
+            {/* Always visible trigger bar with tabs */}
+            <div className="flex items-center justify-between p-2 bg-white border-b border-gray-200">
                 <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">Orders</h3>
-                    <span className="px-2 py-1 text-xs bg-gray-100 rounded-full">
-                        {mockOrders.length}
-                    </span>
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.key}
+                            className={`px-2 py-1 text-xs font-medium transition-colors rounded ${
+                                activeTab === tab.key
+                                    ? 'bg-blue-100 text-blue-600'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                            }`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab(tab.key);
+                            }}
+                        >
+                            {tab.label}
+                            <span className="ml-1 px-1 py-0.5 text-xs bg-gray-200 rounded">
+                                {mockOrders.filter(order => order.status === tab.key).length}
+                            </span>
+                        </button>
+                    ))}
                 </div>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={toggleDrawer}>
                     {isOrdersCollapsed ? (
                         <ChevronUpIcon className="h-4 w-4" />
                     ) : (
@@ -68,26 +82,6 @@ export default function Orders() {
             {!isOrdersCollapsed && (
                 <div className="absolute inset-x-0 top-12 bottom-0 bg-white border-l border-r border-gray-200">
                     <div className="h-full flex flex-col">
-                        {/* Tabs */}
-                        <div className="flex border-b border-gray-200 p-2">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab.key}
-                                    className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
-                                        activeTab === tab.key
-                                            ? 'border-blue-500 text-blue-600'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    }`}
-                                    onClick={() => setActiveTab(tab.key)}
-                                >
-                                    {tab.label}
-                                    <span className="ml-1 px-1 py-0.5 text-xs bg-gray-100 rounded">
-                                        {mockOrders.filter(order => order.status === tab.key).length}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-
                         {/* Orders List */}
                         <div className="flex-1 overflow-y-auto p-2">
                             <div className="space-y-2">
