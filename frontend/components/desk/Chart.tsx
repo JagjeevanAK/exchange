@@ -1,7 +1,7 @@
 "use client"
 
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
     CandlestickSeries,
     Chart,
@@ -12,6 +12,35 @@ import type { CandlestickData } from "lightweight-charts";
 
 export default function MainChart() {
     const [data, setData] = useState<CandlestickData[]>(candlestickSeriesData);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
+    const [chartDimensions, setChartDimensions] = useState({ width: 800, height: 600 });
+
+    useEffect(() => {
+        const updateDimensions = () => {
+            if (chartContainerRef.current) {
+                const { clientWidth, clientHeight } = chartContainerRef.current;
+                // Add minimum dimensions to prevent zero-size issues
+                setChartDimensions({
+                    width: Math.max(clientWidth, 300),
+                    height: Math.max(clientHeight, 200),
+                });
+            }
+        };
+
+        // Use setTimeout to ensure the DOM is fully rendered
+        const timeoutId = setTimeout(updateDimensions, 100);
+
+        // Add resize observer to watch for size changes
+        const resizeObserver = new ResizeObserver(updateDimensions);
+        if (chartContainerRef.current) {
+            resizeObserver.observe(chartContainerRef.current);
+        }
+
+        return () => {
+            clearTimeout(timeoutId);
+            resizeObserver.disconnect();
+        };
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -26,19 +55,25 @@ export default function MainChart() {
     }, []);
 
     return (
-        <>
-            <Chart
-                options={{
-                    width: 1200,
-                    height: 800,
-                }}
-            >
-                <CandlestickSeries data={data} />
-                <TimeScale>
-                    <TimeScaleFitContentTrigger deps={[]} />
-                </TimeScale>
-            </Chart>
-        </>
+        <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-white border border-gray-200 rounded">
+            {chartDimensions.width > 0 && chartDimensions.height > 0 ? (
+                <Chart
+                    options={{
+                        width: chartDimensions.width,
+                        height: chartDimensions.height,
+                    }}
+                >
+                    <CandlestickSeries data={data} />
+                    <TimeScale>
+                        <TimeScaleFitContentTrigger deps={[]} />
+                    </TimeScale>
+                </Chart>
+            ) : (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-500">Loading chart...</p>
+                </div>
+            )}
+        </div>
     );
 };
 
