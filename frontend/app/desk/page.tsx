@@ -12,6 +12,7 @@ import {
     ResizablePanel,
     ResizableHandle,
     ResizablePanelGroup,
+    ResizableHandleVerticle,
 } from "@/components/ui/resizable"
 
 function DeskContent() {
@@ -55,7 +56,7 @@ function DeskContent() {
                         </ResizablePanelGroup>
                     </div>
                 </ResizablePanel>
-                <ResizableHandle />
+                <ResizableHandleVerticle />
                 <ResizablePanel defaultSize={25} minSize={10} maxSize={40} className="bg-background">
                     <div className="h-full overflow-y-auto">
                         <div className="p-4 ">

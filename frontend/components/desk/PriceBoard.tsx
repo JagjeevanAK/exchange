@@ -23,7 +23,7 @@ const PriceCard = () => {
     // const { } = useWebSocket(selectedSymbol, handleTradeUpdate);
 
     return (
-        <div className="border-r border-[#202020] border-dashed p-3 flex gap-3 group">
+        <div className="border-r border-[#202020] border-dashed p-4 flex gap-3 group">
             <div className="w-32 border border-dashed border-[#202020] flex-shrink-0 bg-[#101010] group-hover:border-[#808080] transition-colors duration-100 p-2 rounded-sm">
                 {getIcons(selectedSymbol.toLowerCase())}
             </div>
