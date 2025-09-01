@@ -63,7 +63,7 @@ const CustomDropdown = ({ value, onChange, options }: CustomDropdownProps) => {
                     <span>{selectedOption?.label}</span>
                 </div>
                 <svg
-                    className={`w-4 h-4 transition - transform ${ isOpen ? 'rotate-180' : '' } `}
+                    className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -91,9 +91,9 @@ const CustomDropdown = ({ value, onChange, options }: CustomDropdownProps) => {
                                 onChange(option.key);
                                 setIsOpen(false);
                             }}
-                            className={`w - full px - 3 py - 2 text - left hover: bg - [#202020] transition - colors flex items - center gap - 2 ${
+                            className={`w-full px-3 py-2 text-left hover:bg-[#202020] transition-colors flex items-center gap-2 ${
                                 value === option.key ? 'bg-[#202020]' : ''
-                            } `}
+                            }`}
                         >
                             <div className="w-6 h-6">
                                 {option.icon}

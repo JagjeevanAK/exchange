@@ -1,4 +1,4 @@
-import { Table } from "../ui/table"
+import { CustomTable } from "../ui/table"
 
 type Market = {
     symbol: string
@@ -15,7 +15,7 @@ const markets: Market[] = [
 export default function LiveMarket () {
     return (
         <div>
-            <Table<Market>
+            <CustomTable<Market>
                 data={markets}
                 columns={[
                     { header: "SYMBOL", accessor: "symbol" },

@@ -2,6 +2,7 @@
 
 import dayjs from "dayjs";
 import { useEffect, useState, useRef } from "react";
+import { useTheme } from "next-themes";
 import {
     CandlestickSeries,
     Chart,
@@ -9,11 +10,16 @@ import {
     TimeScaleFitContentTrigger,
 } from "lightweight-charts-react-components";
 import type { CandlestickData } from "lightweight-charts";
+import { ColorType } from "lightweight-charts";
 
 export default function MainChart() {
     const [data, setData] = useState<CandlestickData[]>(candlestickSeriesData);
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const [chartDimensions, setChartDimensions] = useState({ width: 800, height: 600 });
+    const { resolvedTheme } = useTheme();
+    
+    // Get the current theme (resolvedTheme accounts for 'system' preference)
+    const isDark = resolvedTheme === 'dark';
 
     useEffect(() => {
         const updateDimensions = () => {
@@ -55,22 +61,53 @@ export default function MainChart() {
     }, []);
 
     return (
-        <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-white border border-gray-200 rounded">
+        <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-border rounded">
             {chartDimensions.width > 0 && chartDimensions.height > 0 ? (
                 <Chart
                     options={{
                         width: chartDimensions.width,
                         height: chartDimensions.height,
+                        layout: {
+                            background: {
+                                type: ColorType.Solid,
+                                color: isDark ? '#0c0a09' : '#ffffff', // dark:stone-950 : white
+                            },
+                            textColor: isDark ? '#f5f5f4' : '#0c0a09', // dark:stone-100 : stone-950
+                        },
+                        grid: {
+                            vertLines: {
+                                color: isDark ? '#292524' : '#e7e5e4', // dark:stone-800 : stone-200
+                            },
+                            horzLines: {
+                                color: isDark ? '#292524' : '#e7e5e4', // dark:stone-800 : stone-200
+                            },
+                        },
+                        timeScale: {
+                            borderColor: isDark ? '#44403c' : '#d6d3d1', // dark:stone-700 : stone-300
+                        },
+                        rightPriceScale: {
+                            borderColor: isDark ? '#44403c' : '#d6d3d1', // dark:stone-700 : stone-300
+                        },
                     }}
                 >
-                    <CandlestickSeries data={data} />
+                    <CandlestickSeries 
+                        data={data}
+                        options={{
+                            upColor: isDark ? '#22c55e' : '#16a34a', // green-500 : green-600
+                            downColor: isDark ? '#ef4444' : '#dc2626', // red-500 : red-600
+                            borderUpColor: isDark ? '#22c55e' : '#16a34a',
+                            borderDownColor: isDark ? '#ef4444' : '#dc2626',
+                            wickUpColor: isDark ? '#22c55e' : '#16a34a',
+                            wickDownColor: isDark ? '#ef4444' : '#dc2626',
+                        }}
+                    />
                     <TimeScale>
                         <TimeScaleFitContentTrigger deps={[]} />
                     </TimeScale>
                 </Chart>
             ) : (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-500">Loading chart...</p>
+                    <p className="text-muted-foreground">Loading chart...</p>
                 </div>
             )}
         </div>

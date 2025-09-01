@@ -23,7 +23,7 @@ function DeskContent() {
     return (
         <div className="fixed inset-0 overflow-hidden">
             <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-                <ResizablePanel defaultSize={80} className="border border-red-800">
+                <ResizablePanel defaultSize={80} className="">
                     <div className="p-4 h-full">
                         <ResizablePanelGroup direction="vertical" className="h-full">
                             <ResizablePanel 
@@ -42,7 +42,7 @@ function DeskContent() {
                                 maxSize={50}
                                 key={`orders-${isOrdersCollapsed ? 'collapsed' : 'expanded'}`}
                             >
-                                <div className="h-full bg-gray-50 border border-gray-200 rounded p-4">
+                                <div className="h-full bg-muted border border-border rounded p-4">
                                     <ChartNav/>
                                     <Orders/>
                                 </div>
@@ -51,7 +51,7 @@ function DeskContent() {
                     </div>
                 </ResizablePanel>
                 <ResizableHandle />
-                <ResizablePanel defaultSize={25} minSize={10} maxSize={40} className="bg-gray-100">
+                <ResizablePanel defaultSize={25} minSize={10} maxSize={40} className="bg-background">
                     <div className="h-full overflow-y-auto">
                         <div className="p-4 ">
                             <WalletMenu/>
@@ -59,7 +59,7 @@ function DeskContent() {
                         <div >
                             <LiveMarket />
                         </div>
-                        <div className="p-4 border-t">
+                        <div className="p-4 border-t border-border">
                             <OrderBook />
                         </div>
                     </div>

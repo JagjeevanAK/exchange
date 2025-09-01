@@ -37,7 +37,7 @@ export default function Orders() {
     const filteredOrders = mockOrders.filter(order => order.status === activeTab);
 
     const getAmountColor = (type: 'Buy' | 'Sell') => {
-        return type === 'Buy' ? 'text-green-600' : 'text-red-600';
+        return type === 'Buy' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
     };
 
     const toggleDrawer = () => {
@@ -47,15 +47,15 @@ export default function Orders() {
     return (
         <div className="relative h-full overflow-hidden">
             {/* Always visible trigger bar with tabs */}
-            <div className="flex items-center justify-between p-2 bg-white border-b border-gray-200">
+            <div className="flex items-center justify-between p-2 bg-background border-b border-border">
                 <div className="flex items-center gap-2">
                     {tabs.map((tab) => (
                         <button
                             key={tab.key}
                             className={`px-2 py-1 text-xs font-medium transition-colors rounded ${
                                 activeTab === tab.key
-                                    ? 'bg-blue-100 text-blue-600'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                             }`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -63,7 +63,7 @@ export default function Orders() {
                             }}
                         >
                             {tab.label}
-                            <span className="ml-1 px-1 py-0.5 text-xs bg-gray-200 rounded">
+                            <span className="ml-1 px-1 py-0.5 text-xs bg-muted rounded">
                                 {mockOrders.filter(order => order.status === tab.key).length}
                             </span>
                         </button>
@@ -80,20 +80,20 @@ export default function Orders() {
 
             {/* Content panel that appears/disappears */}
             {!isOrdersCollapsed && (
-                <div className="absolute inset-x-0 top-12 bottom-0 bg-white border-l border-r border-gray-200">
+                <div className="absolute inset-x-0 top-12 bottom-0 bg-background border-l border-r border-border">
                     <div className="h-full flex flex-col">
                         {/* Orders List */}
                         <div className="flex-1 overflow-y-auto p-2">
                             <div className="space-y-2">
                                 {filteredOrders.length > 0 ? (
                                     filteredOrders.map((order) => (
-                                        <div key={order.id} className="flex justify-between items-center p-2 bg-gray-50 rounded shadow-sm border border-gray-100">
+                                        <div key={order.id} className="flex justify-between items-center p-2 bg-card rounded shadow-sm border border-border">
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-medium text-gray-900">{order.pair}</span>
-                                                <span className="text-xs text-gray-500">{order.price}</span>
+                                                <span className="text-xs font-medium text-card-foreground">{order.pair}</span>
+                                                <span className="text-xs text-muted-foreground">{order.price}</span>
                                             </div>
                                             <div className="flex flex-col items-center">
-                                                <span className="text-xs font-medium text-gray-700">{order.type}</span>
+                                                <span className="text-xs font-medium text-muted-foreground">{order.type}</span>
                                                 <span className={`text-xs font-semibold ${getAmountColor(order.type)}`}>
                                                     {order.amount}
                                                 </span>
@@ -101,11 +101,11 @@ export default function Orders() {
                                             {activeTab !== 'closed' && (
                                                 <div className="flex gap-1">
                                                     {activeTab === 'pending' && (
-                                                        <button className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200">
+                                                        <button className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded hover:bg-green-200 dark:hover:bg-green-900/30">
                                                             Execute
                                                         </button>
                                                     )}
-                                                    <button className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                                    <button className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/30">
                                                         Cancel
                                                     </button>
                                                 </div>
@@ -113,7 +113,7 @@ export default function Orders() {
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="flex items-center justify-center h-20 text-gray-500">
+                                    <div className="flex items-center justify-center h-20 text-muted-foreground">
                                         <p className="text-xs">No {activeTab} orders</p>
                                     </div>
                                 )}

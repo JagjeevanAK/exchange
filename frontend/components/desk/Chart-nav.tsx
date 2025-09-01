@@ -1,12 +1,15 @@
 "use client"
 
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import CustomDropdown from "../ui/CuDropdown";
 import { BTC, ETH, SOL } from "@/components/icons/icons";
 
 export default function ChartNav(){
     const [timeInterval, setTimeInterval] = useState('1m');
     const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
 
     const intervalButtons = [
         { key: '1m', label: '1m' },
@@ -35,7 +38,7 @@ export default function ChartNav(){
 
 
     return (
-        <div className="border">
+        <div className="border border-border">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <CustomDropdown
@@ -49,9 +52,9 @@ export default function ChartNav(){
                     {intervalButtons.map((interval) => (
                         <button
                             key={interval.key}
-                            className={`px-4 py-1 border border-dashed border-[#202020] transition-colors ${timeInterval === interval.key
-                                ? 'bg-[#f7f7f7] border-[#808080] text-black'
-                                : 'bg-[#101010] text-white hover:border-[#404040]'
+                            className={`px-4 py-1 border border-dashed transition-colors ${timeInterval === interval.key
+                                ? 'bg-foreground text-background border-foreground'
+                                : 'bg-background border-border text-foreground hover:border-muted-foreground/50 hover:bg-muted'
                                 }`}
                             onClick={() => setTimeInterval(interval.key)}
                         >
