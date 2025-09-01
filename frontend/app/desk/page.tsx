@@ -5,6 +5,8 @@ import LiveMarket from "@/components/desk/Livemarket";
 import OrderBook from "@/components/desk/OrderBook";
 import Orders from "@/components/desk/Orders"
 import { OrdersProvider, useOrders } from "@/components/desk/OrdersContext"
+import { TradingProvider } from "@/components/desk/TradingContext"
+import PriceCard from "@/components/desk/PriceBoard";
 import WalletMenu from "@/components/desk/Wallet";
 import {
     ResizablePanel,
@@ -62,7 +64,10 @@ function DeskContent() {
                         <div >
                             <LiveMarket />
                         </div>
-                        <div className="p-4">
+                        <div>
+                            <PriceCard/>
+                        </div>
+                        <div className="">
                             <OrderBook />
                         </div>
                     </div>
@@ -74,8 +79,10 @@ function DeskContent() {
 
 export default function Desk() {
     return (
-        <OrdersProvider>
-            <DeskContent />
-        </OrdersProvider>
+        <TradingProvider>
+            <OrdersProvider>
+                <DeskContent />
+            </OrdersProvider>
+        </TradingProvider>
     )
 }

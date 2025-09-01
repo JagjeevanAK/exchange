@@ -1,13 +1,12 @@
 "use client"
 
-import { useState } from "react";
 import { useTheme } from "next-themes";
 import CustomDropdown from "../ui/CuDropdown";
 import { BTC, ETH, SOL } from "@/components/icons/icons";
+import { useTradingContext } from "./TradingContext";
 
 export default function ChartNav(){
-    const [timeInterval, setTimeInterval] = useState('1m');
-    const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
+    const { selectedSymbol, setSelectedSymbol, timeInterval, setTimeInterval } = useTradingContext();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
 
@@ -29,13 +28,11 @@ export default function ChartNav(){
         }
     }
 
-
     const symbolOptionsWithIcons = [
         { key: 'BTCUSDT', label: 'BTC', icon: getIcons('btcusdt') },
         { key: 'ETHUSDT', label: 'ETH', icon: getIcons('ethusdt') },
         { key: 'SOLUSDT', label: 'SOL', icon: getIcons('solusdt') },
     ];
-
 
     return (
         <div className="border border-dashed border-border">
