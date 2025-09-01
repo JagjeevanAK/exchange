@@ -45,9 +45,9 @@ export default function Orders() {
     };
 
     return (
-        <div className="relative h-full overflow-hidden">
+        <div className="relative h-full overflow-hidden mt-2">
             {/* Always visible trigger bar with tabs */}
-            <div className="flex items-center justify-between p-2 bg-background border-b border-border">
+            <div className="flex items-center justify-between p-2 bg-background border-b border-border mx-2 rounded-t">
                 <div className="flex items-center gap-2">
                     {tabs.map((tab) => (
                         <button
@@ -80,7 +80,7 @@ export default function Orders() {
 
             {/* Content panel that appears/disappears */}
             {!isOrdersCollapsed && (
-                <div className="absolute inset-x-0 top-12 bottom-0 bg-background border-l border-r border-border">
+                <div className="absolute inset-x-2 top-12 bottom-2 bg-background border border-border rounded-b">
                     <div className="h-full flex flex-col">
                         {/* Orders List */}
                         <div className="flex-1 overflow-y-auto p-2">

@@ -38,12 +38,14 @@ function DeskContent() {
                             <ResizableHandle />
                             <ResizablePanel 
                                 defaultSize={ordersSize} 
-                                minSize={isOrdersCollapsed ? 8 : 15} 
+                                minSize={isOrdersCollapsed ? 14 : 15} 
                                 maxSize={50}
                                 key={`orders-${isOrdersCollapsed ? 'collapsed' : 'expanded'}`}
                             >
-                                <div className="h-full bg-muted border border-border rounded p-4">
-                                    <ChartNav/>
+                                <div className="h-full bg-muted border border-border rounded">
+                                    <div className="p-2">
+                                        <ChartNav/>
+                                    </div>
                                     <Orders/>
                                 </div>
                             </ResizablePanel>
