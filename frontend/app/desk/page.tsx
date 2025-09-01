@@ -5,6 +5,7 @@ import LiveMarket from "@/components/desk/Livemarket";
 import OrderBook from "@/components/desk/OrderBook";
 import Orders from "@/components/desk/Orders"
 import { OrdersProvider, useOrders } from "@/components/desk/OrdersContext"
+import WalletMenu from "@/components/desk/Wallet";
 import {
     ResizablePanel,
     ResizableHandle,
@@ -52,7 +53,10 @@ function DeskContent() {
                 <ResizableHandle />
                 <ResizablePanel defaultSize={25} minSize={10} maxSize={40} className="bg-gray-100">
                     <div className="h-full overflow-y-auto">
-                        <div className="p-4">
+                        <div className="p-4 ">
+                            <WalletMenu/>
+                        </div>
+                        <div >
                             <LiveMarket />
                         </div>
                         <div className="p-4 border-t">
