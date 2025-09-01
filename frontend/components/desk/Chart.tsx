@@ -93,12 +93,12 @@ export default function MainChart() {
                     <CandlestickSeries 
                         data={data}
                         options={{
-                            upColor: isDark ? '#22c55e' : '#16a34a', // green-500 : green-600
-                            downColor: isDark ? '#ef4444' : '#dc2626', // red-500 : red-600
-                            borderUpColor: isDark ? '#22c55e' : '#16a34a',
-                            borderDownColor: isDark ? '#ef4444' : '#dc2626',
-                            wickUpColor: isDark ? '#22c55e' : '#16a34a',
-                            wickDownColor: isDark ? '#ef4444' : '#dc2626',
+                            upColor: '#079981', // Custom green color
+                            downColor: '#F23645', // Custom red color
+                            borderUpColor: '#079981',
+                            borderDownColor: '#F23645',
+                            wickUpColor: '#079981',
+                            wickDownColor: '#F23645',
                         }}
                     />
                     <TimeScale>

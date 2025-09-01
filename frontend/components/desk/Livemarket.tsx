@@ -15,7 +15,6 @@ const markets: Market[] = [
 
 export default function LiveMarket () {
     const getAssetLogo = (symbol: string) => {
-        // Extract asset from symbol (e.g., BTC from BTCUSDT)
         const asset = symbol.replace('USDT', '').replace('USD', '');
         
         switch(asset) {
