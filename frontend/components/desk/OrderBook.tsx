@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { RefreshCw, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
+import { useNumberInput } from "@/hooks/useNumberInput";
 
 type OrderSide = "buy" | "sell";
 type OrderType = "market" | "limit";
@@ -24,13 +25,15 @@ interface OrderDetails {
 export default function OrderBook() {
   const [activeTab, setActiveTab] = useState<OrderSide>("buy");
   const [orderType, setOrderType] = useState<OrderType>("market");
-  const [amount, setAmount] = useState<string>("");
   const [leverage, setLeverage] = useState<number>(13.2);
   const [enableTakeProfitStopLoss, setEnableTakeProfitStopLoss] = useState<boolean>(false);
-  const [takeProfitPrice, setTakeProfitPrice] = useState<string>("");
-  const [stopLossPrice, setStopLossPrice] = useState<string>("");
-  const [takeProfitGain, setTakeProfitGain] = useState<string>("");
-  const [stopLossAmount, setStopLossAmount] = useState<string>("");
+
+  // Use number input hooks for formatted inputs
+  const amountInput = useNumberInput({ initialValue: '', decimals: 2 });
+  const takeProfitPriceInput = useNumberInput({ initialValue: '', decimals: 2 });
+  const takeProfitGainInput = useNumberInput({ initialValue: '', decimals: 2 });
+  const stopLossPriceInput = useNumberInput({ initialValue: '', decimals: 2 });
+  const stopLossAmountInput = useNumberInput({ initialValue: '', decimals: 2 });
 
   const handleTabClick = (side: OrderSide) => {
     setActiveTab(side);
@@ -44,54 +47,53 @@ export default function OrderBook() {
     const orderDetails: OrderDetails = {
       side: activeTab,
       orderType,
-      amount: parseFloat(amount) || 0,
+      amount: amountInput.numericValue,
       leverage,
-      takeProfitPrice,
-      stopLossPrice,
-      takeProfitGain,
-      stopLossAmount,
+      takeProfitPrice: takeProfitPriceInput.rawValue,
+      stopLossPrice: stopLossPriceInput.rawValue,
+      takeProfitGain: takeProfitGainInput.rawValue,
+      stopLossAmount: stopLossAmountInput.rawValue,
       enableTakeProfitStopLoss,
     };
     console.log("Placing order:", orderDetails);
     // Reset form
-    setAmount("");
-    setTakeProfitPrice("");
-    setStopLossPrice("");
-    setTakeProfitGain("");
-    setStopLossAmount("");
+    amountInput.reset();
+    takeProfitPriceInput.reset();
+    stopLossPriceInput.reset();
+    takeProfitGainInput.reset();
+    stopLossAmountInput.reset();
   };
 
   return (
     <div className="w-full h-full px-4 pb-2">
       {/* Order Book Card */}
       <Card className="p-4 space-y-3 h-full flex flex-col">
-        {/* Top Row: Long/Buy - Short/Sell tabs and Refresh */}
+        {/* Top Row: Long/Buy - Short/Sell tabs */}
         <div className="flex items-center justify-between">
-          <div className="flex gap-1">
-            <Button
+          <div className="flex w-full max-w-md">
+            {/* Long/Buy Tab */}
+            <button
               onClick={() => handleTabClick("buy")}
-              variant={activeTab === "buy" ? "default" : "ghost"}
-              size="sm"
-              className={`px-3 py-1 text-sm font-medium ${
-                activeTab === "buy" 
-                  ? "bg-green-600 hover:bg-green-700 text-white" 
-                  : "text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
-              }`}
+              className={`flex-1 py-3 px-4 text-sm font-bold transition-all duration-200  ${
+                activeTab === "buy"
+                  ? "bg-green-600 text-white"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+              } rounded-l-md border-r border-border/50`}
             >
               Long/Buy
-            </Button>
-            <Button
+            </button>
+            
+            {/* Short/Sell Tab */}
+            <button
               onClick={() => handleTabClick("sell")}
-              variant={activeTab === "sell" ? "default" : "ghost"}
-              size="sm"
-              className={`px-3 py-1 text-sm font-medium ${
-                activeTab === "sell" 
-                  ? "bg-red-600 hover:bg-red-700 text-white" 
-                  : "text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              }`}
+              className={`flex-1 py-3 px-4 text-sm font-bold transition-all duration-200 ${
+                activeTab === "sell"
+                  ? "bg-red-600 text-white"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+              } rounded-r-md`}
             >
               Short/Sell
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -101,11 +103,7 @@ export default function OrderBook() {
             onClick={() => setOrderType("market")}
             variant={orderType === "market" ? "default" : "outline"}
             size="sm"
-            className={`flex-1 ${
-              orderType === "market" 
-                ? "bg-cyan-600 hover:bg-cyan-700 text-white" 
-                : "border-cyan-600 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
-            }`}
+            className="flex-1 h-10 font-bold"
           >
             Market
           </Button>
@@ -113,7 +111,7 @@ export default function OrderBook() {
             onClick={() => setOrderType("limit")}
             variant={orderType === "limit" ? "default" : "outline"}
             size="sm"
-            className="flex-1"
+            className="flex-1 h-10 font-bold"
           >
             Limit
           </Button>
@@ -125,7 +123,13 @@ export default function OrderBook() {
             {/* Work to do here */}
           </div>
           <div className="text-right">
-            <span className="text-lg font-medium">0.00</span>
+            <input
+              type="text"
+              placeholder="0.00"
+              value={amountInput.displayValue}
+              onChange={(e) => amountInput.handleChange(e.target.value)}
+              className="bg-transparent border-none outline-none text-lg font-medium text-right w-full focus:ring-0 placeholder:text-muted-foreground"
+            />
           </div>
         </div>
 
@@ -152,6 +156,7 @@ export default function OrderBook() {
           </div>
           
           <div className="relative">
+            {/* Slider */}
             <input
               type="range"
               min="1.1"
@@ -159,8 +164,10 @@ export default function OrderBook() {
               step="0.1"
               value={leverage}
               onChange={(e) => setLeverage(parseFloat(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 slider"
+              className="w-full slider-themed"
             />
+            
+            {/* Labels */}
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>1.1x</span>
               <span>20x</span>
@@ -189,54 +196,52 @@ export default function OrderBook() {
 
           {enableTakeProfitStopLoss && (
             <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">TP Price</label>
+                            <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground block h-4">TP Price</label>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="0"
-                    value={takeProfitPrice}
-                    onChange={(e) => setTakeProfitPrice(e.target.value)}
-                    className="h-8 text-sm"
+                    value={takeProfitPriceInput.displayValue}
+                    onChange={(e) => takeProfitPriceInput.handleChange(e.target.value)}
+                    className="h-8 text-sm text-right"
                   />
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground flex items-center gap-1">
-                    <span>%</span> Gain
-                    <span className="text-xs">$</span>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground block h-4">
+                    % Gain $
                   </label>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="0"
-                    value={takeProfitGain}
-                    onChange={(e) => setTakeProfitGain(e.target.value)}
-                    className="h-8 text-sm"
+                    value={takeProfitGainInput.displayValue}
+                    onChange={(e) => takeProfitGainInput.handleChange(e.target.value)}
+                    className="h-8 text-sm text-right"
                   />
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-muted-foreground">SL Price</label>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground block h-4">SL Price</label>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="0"
-                    value={stopLossPrice}
-                    onChange={(e) => setStopLossPrice(e.target.value)}
-                    className="h-8 text-sm"
+                    value={stopLossPriceInput.displayValue}
+                    onChange={(e) => stopLossPriceInput.handleChange(e.target.value)}
+                    className="h-8 text-sm text-right"
                   />
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground flex items-center gap-1">
-                    <span>%</span> Loss
-                    <span className="text-xs">$</span>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground block h-4">
+                    % Loss $
                   </label>
                   <Input
-                    type="number"
+                    type="text"
                     placeholder="0"
-                    value={stopLossAmount}
-                    onChange={(e) => setStopLossAmount(e.target.value)}
-                    className="h-8 text-sm"
+                    value={stopLossAmountInput.displayValue}
+                    onChange={(e) => stopLossAmountInput.handleChange(e.target.value)}
+                    className="h-8 text-sm text-right"
                   />
                 </div>
               </div>
@@ -248,7 +253,7 @@ export default function OrderBook() {
         <div className="flex-1 flex items-end">
           <Button
             onClick={handlePlaceOrder}
-            disabled={!amount || parseFloat(amount) <= 0}
+            disabled={!amountInput.displayValue || amountInput.numericValue <= 0}
             className={`w-full h-12 text-lg font-semibold ${
               activeTab === "buy"
                 ? "bg-green-600 hover:bg-green-700"
@@ -260,25 +265,29 @@ export default function OrderBook() {
         </div>
       </Card>
 
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      <style jsx global>{`
+        .slider-themed {
+          accent-color: #000000; /* Black for light theme */
+        }
+        
+        .dark .slider-themed {
+          accent-color: #ffffff; /* White for dark theme */
         }
 
-        .slider::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        /* Remove spinner buttons from ALL number inputs */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+
+        /* Ensure all inputs are properly aligned */
+        input[type=number] {
+          text-align: right;
         }
       `}</style>
     </div>
