@@ -38,8 +38,8 @@ model Trade {
   user      User     @relation(fields: [userId], references: [id])
   asset     String
   type      TradeType
-  amount    Float
-  price     Float
+  margin    Float
+  amount     Float
   quantity  Float
   leverage  Int
   createdAt DateTime @default(now())

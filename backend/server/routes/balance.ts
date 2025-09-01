@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
 import { Router } from "express";
+import { prisma } from "../lib/prsimaClient";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.get('/balance', async (req, res) => {
     try {
