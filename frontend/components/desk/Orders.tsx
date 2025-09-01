@@ -47,7 +47,7 @@ export default function Orders() {
     return (
         <div className="relative h-full overflow-hidden mt-2">
             {/* Always visible trigger bar with tabs */}
-            <div className="flex items-center justify-between p-2 bg-background border-b border-border mx-2 rounded-t">
+            <div className="flex items-center justify-between p-2 bg-background border-b border-dashed border-border mx-2 rounded-t">
                 <div className="flex items-center gap-2">
                     {tabs.map((tab) => (
                         <button
@@ -80,14 +80,14 @@ export default function Orders() {
 
             {/* Content panel that appears/disappears */}
             {!isOrdersCollapsed && (
-                <div className="absolute inset-x-2 top-12 bottom-2 bg-background border border-border rounded-b">
+                <div className="absolute inset-x-2 top-12 bottom-2 bg-background border border-dashed border-border rounded-b">
                     <div className="h-full flex flex-col">
                         {/* Orders List */}
                         <div className="flex-1 overflow-y-auto p-2">
                             <div className="space-y-2">
                                 {filteredOrders.length > 0 ? (
                                     filteredOrders.map((order) => (
-                                        <div key={order.id} className="flex justify-between items-center p-2 bg-card rounded shadow-sm border border-border">
+                                        <div key={order.id} className="flex justify-between items-center p-2 bg-card rounded shadow-sm border border-dashed border-border">
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-medium text-card-foreground">{order.pair}</span>
                                                 <span className="text-xs text-muted-foreground">{order.price}</span>

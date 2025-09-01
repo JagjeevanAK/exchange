@@ -38,7 +38,7 @@ export default function ChartNav(){
 
 
     return (
-        <div className="border border-border">
+        <div className="border border-dashed border-border">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <CustomDropdown

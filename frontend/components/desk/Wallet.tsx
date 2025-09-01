@@ -14,20 +14,20 @@ export default function WalletMenu() {
     const [open, setOpen] = useState(false)
 
     return (
-        <div className="flex justify-around gap-3">
+        <div className="flex gap-2 w-full">
             {/* Wallet Balance Dropdown */}
             <DropdownMenu open={open} onOpenChange={setOpen}>
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="outline"
-                        className="flex items-center gap-2 text-lg font-semibold rounded-md"
+                        className="flex-1 items-center gap-2 text-lg font-semibold rounded-md"
                     >
                         9,999.54 USD
                         {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent className="w-80 p-3 rounded-xl shadow-lg">
+                <DropdownMenuContent className="flex-1 w-80 p-3 rounded-xl shadow-lg">
 
                     {/* Wallet Info */}
                     <div className="space-y-2 text-sm">

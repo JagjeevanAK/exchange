@@ -61,7 +61,7 @@ export default function MainChart() {
     }, []);
 
     return (
-        <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-border rounded">
+        <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
             {chartDimensions.width > 0 && chartDimensions.height > 0 ? (
                 <Chart
                     options={{

@@ -62,7 +62,7 @@ export default function OrderBook() {
           onClick={() => handleTabClick("buy")}
           variant={activeTab === "buy" ? "default" : "outline"}
           className={`flex-1 ${
-            activeTab === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "border-green-600 text-green-600 hover:bg-green-50"
+            activeTab === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "border-dashed border-green-600 text-green-600 hover:bg-green-50"
           }`}
         >
           Buy
@@ -71,7 +71,7 @@ export default function OrderBook() {
           onClick={() => handleTabClick("sell")}
           variant={activeTab === "sell" ? "default" : "outline"}
           className={`flex-1 ${
-            activeTab === "sell" ? "bg-red-600 hover:bg-red-700 text-white" : "border-red-600 text-red-600 hover:bg-red-50"
+            activeTab === "sell" ? "bg-red-600 hover:bg-red-700 text-white" : "border-dashed border-red-600 text-red-600 hover:bg-red-50"
           }`}
         >
           Sell
@@ -166,7 +166,7 @@ export default function OrderBook() {
                 </span>
               </div>
               
-              <div className="border-t pt-2">
+              <div className="border-t border-dashed pt-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Value:</span>
                   <span className="font-medium text-foreground">

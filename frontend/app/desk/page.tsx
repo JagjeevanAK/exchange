@@ -35,6 +35,7 @@ function DeskContent() {
                                     <MainChart/>
                                 </div>
                             </ResizablePanel>
+                            <div className="m-2"></div>
                             <ResizableHandle />
                             <ResizablePanel 
                                 defaultSize={ordersSize} 
@@ -42,7 +43,7 @@ function DeskContent() {
                                 maxSize={50}
                                 key={`orders-${isOrdersCollapsed ? 'collapsed' : 'expanded'}`}
                             >
-                                <div className="h-full bg-muted border border-border rounded">
+                                <div className="h-full bg-muted border border-dashed border-border rounded">
                                     <div className="p-2">
                                         <ChartNav/>
                                     </div>
@@ -61,7 +62,7 @@ function DeskContent() {
                         <div >
                             <LiveMarket />
                         </div>
-                        <div className="p-4 border-t border-border">
+                        <div className="p-4">
                             <OrderBook />
                         </div>
                     </div>
