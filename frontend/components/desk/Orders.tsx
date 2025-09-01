@@ -45,17 +45,17 @@ export default function Orders() {
     };
 
     return (
-        <div className="relative h-full overflow-hidden mt-2">
+        <div className="relative h-full overflow-hidden mt-2 border border-dashed border-border rounded ">
             {/* Always visible trigger bar with tabs */}
             <div className="flex items-center justify-between p-2 bg-background border-b border-dashed border-border mx-2 rounded-t">
                 <div className="flex items-center gap-2">
                     {tabs.map((tab) => (
                         <button
                             key={tab.key}
-                            className={`px-2 py-1 text-xs font-medium transition-colors rounded ${
+                            className={`px-2 py-1 text-md font-bold transition-all duration-200 relative ${
                                 activeTab === tab.key
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                                    ? 'text-primary border-b-2 border-primary'
+                                    : 'text-muted-foreground hover:text-foreground'
                             }`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -63,9 +63,6 @@ export default function Orders() {
                             }}
                         >
                             {tab.label}
-                            <span className="ml-1 px-1 py-0.5 text-xs bg-muted rounded">
-                                {mockOrders.filter(order => order.status === tab.key).length}
-                            </span>
                         </button>
                     ))}
                 </div>

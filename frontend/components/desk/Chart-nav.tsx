@@ -1,14 +1,14 @@
 "use client"
 
-import { useTheme } from "next-themes";
+// import { useTheme } from "next-themes";
 import CustomDropdown from "../ui/CuDropdown";
 import { BTC, ETH, SOL } from "@/components/icons/icons";
 import { useTradingContext } from "./TradingContext";
 
 export default function ChartNav(){
     const { selectedSymbol, setSelectedSymbol, timeInterval, setTimeInterval } = useTradingContext();
-    const { resolvedTheme } = useTheme();
-    const isDark = resolvedTheme === 'dark';
+    // const { resolvedTheme } = useTheme();
+    // const isDark = resolvedTheme === 'dark';
 
     const intervalButtons = [
         { key: '1m', label: '1m' },
@@ -35,7 +35,7 @@ export default function ChartNav(){
     ];
 
     return (
-        <div className="border border-dashed border-border">
+        <div className="border border-dashed border-border px-4 py-3">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <CustomDropdown
