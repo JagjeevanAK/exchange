@@ -21,6 +21,11 @@ enum TradeType {
   SHORT
 }
 
+enum Status { 
+  OPEN
+  CLOSED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -38,8 +43,9 @@ model Trade {
   user      User     @relation(fields: [userId], references: [id])
   asset     String
   type      TradeType
+  status    Status
   margin    Float
-  amount     Float
+  amount    Float
   quantity  Float
   leverage  Int
   createdAt DateTime @default(now())

@@ -36,7 +36,7 @@ router.post("/", async (req:Request, res: Response) => {
         const tradableBalance = userBalance?.usd?.tradable || 0;
         const amount = margin * leverage;
 
-        if(tradableBalance < margin){
+        if(tradableBalance < margin ){
             return res.status(402).json({
                 message: "Sorry trade can't be executed due to less balance"
             })
