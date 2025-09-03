@@ -1,9 +1,12 @@
 import { WebSocket } from "ws";
 import type { stream, Ticker } from "./types";
-import { enqueue } from "./lib/dbQueue";
+import { enqueue, consume } from "./lib/dbQueue";
 import { pub } from "./lib/publisher";
 
 const ws = new WebSocket('wss://stream.binance.com:9443/stream?streams=btcfdusd@trade/ethusdt@trade/usdcusdt@trade/solusdt@trade/btcusdt@trade/ethfdusd@trade/ethusdc@trade/xrpusdc@trade/solfdusd@trade/solusdc@trade');
+
+// Start the database consumer
+consume('db').catch(console.error);
 
 ws.on("open", () => {
     console.log("Connected to server");
