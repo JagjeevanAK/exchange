@@ -174,11 +174,6 @@ services:
       - "3000:3000"
     depends_on:
       - server
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    command: npm run dev
     restart: unless-stopped
 
 volumes:
