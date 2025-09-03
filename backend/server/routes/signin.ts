@@ -16,14 +16,20 @@ router.post('/signin', async (req, res) => {
         const { email, password } = req.body;
 
         if( !email || !password ){
-            return res.send(401).json({
-                message: "Eamil and Password are required"
+            return res.status(401).json({
+                message: "Email and Password are required"
             });
         }
 
         const dbData = await prisma.user.findUnique({
             where: {email}
         });
+
+        if (!dbData) {
+            return res.status(403).json({
+                message: "Incorrect credentials"
+            });
+        }
 
         const isMatch = await bcrypt.compare(password, dbData.password);
 

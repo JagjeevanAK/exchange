@@ -1,15 +1,13 @@
+import Redis from "ioredis";
 
-class PubSubManager {
-    private static instance: PubSubManager;
+const sub = new Redis();
 
-    private constructor(){
+export default async function pollerSubscriber(ticker: string){
+    await sub.connect();
 
-    }
+    sub.on('connection',(channel, msg)=>{
+        const payload = JSON.parse(msg);
 
-    private static getInstance(): PubSubManager {
-        if (!this.instance){
-            this.instance = new PubSubManager();
-        }
-        return this.instance;
-    }
+        
+    });
 }
