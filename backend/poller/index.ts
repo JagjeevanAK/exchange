@@ -10,25 +10,25 @@ consume('db').catch(console.error);
 
 ws.on("open", () => {
     console.log("Connected to server");
+    
+    ws.on("message", async (event) => {
+        const data = JSON.parse(event.toString()) as stream;
+    
+        const dbData: Ticker = {
+            E: new Date(data.data.E),
+            T: new Date(data.data.T),
+            s: data.data.s,
+            t: data.data.t,
+            p: data.data.p,
+            q: data.data.q
+        }
+    
+        console.log(dbData);
+        await pub(dbData.s, JSON.stringify(dbData));
+        await enqueue('db', JSON.stringify(dbData));
+    });
 });
 
 ws.on('close',()=>{
     console.log("Ws Server closed Gracefully");
-});
-
-ws.on("message", async (event) => {
-    const data = JSON.parse(event.toString()) as stream;
-
-    const dbData: Ticker = {
-        E: new Date(data.data.E),
-        T: new Date(data.data.T),
-        s: data.data.s,
-        t: data.data.t,
-        p: data.data.p,
-        q: data.data.q
-    }
-
-    await pub(dbData.s, JSON.stringify(dbData));
-    await enqueue('db', JSON.stringify(dbData));
-    console.log(dbData);
 });

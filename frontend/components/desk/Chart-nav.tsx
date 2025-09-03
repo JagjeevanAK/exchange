@@ -11,10 +11,14 @@ export default function ChartNav(){
     // const isDark = resolvedTheme === 'dark';
 
     const intervalButtons = [
+        { key: '1s', label: '1s' },
         { key: '1m', label: '1m' },
         { key: '5m', label: '5m' },
+        { key: '15m', label: '15m' },
         { key: '30m', label: '30m' },
         { key: '1h', label: '1h' },
+        { key: '1d', label: '1d' },
+        { key: '1w', label: '1w' },
     ];
 
     const getIcons = (sym: string) => {

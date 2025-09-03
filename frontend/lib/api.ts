@@ -58,6 +58,36 @@ const removeAuthToken = (): void => {
     }
 };
 
+// Helper to check if JWT token is expired
+const isTokenExpired = (token: string): boolean => {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+        return payload.exp < currentTime;
+    } catch {
+        return true; // Consider invalid tokens as expired
+    }
+};
+
+// Helper function to handle authentication errors consistently
+const handleAuthError = (errorMessage: string | undefined): Error => {
+    if (errorMessage === "Invalid token" || 
+        errorMessage === "No token in header" || 
+        errorMessage === "No authorization in header") {
+        removeAuthToken();
+        return new Error("Session expired. Please sign in again.");
+    }
+    return new Error(errorMessage || "Request failed");
+};
+
+// Helper function to check if user needs authentication
+const requireAuth = (): void => {
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error("Authentication required. Please sign in to continue.");
+    }
+};
+
 export const api = {
     signin: async (email: string, password: string) => {
         try {
@@ -125,18 +155,43 @@ export const api = {
     },
 
     // Candles/Chart data APIs
-    getCandles: async (symbol: string, interval: string, limit?: number) => {
+    getCandles: async (asset: string, timeframe: string, startTime?: number, endTime?: number) => {
         try {
+            // Default to last 24 hours if no time range provided
+            const now = Math.floor(Date.now() / 1000);
+            const defaultStartTime = now - (24 * 60 * 60); // 24 hours ago
+            
             const params = new URLSearchParams({
-                symbol,
-                interval,
-                ...(limit && { limit: limit.toString() })
+                asset: asset, // Keep the full symbol like BTCUSDT
+                ts: timeframe,
+                startTime: (startTime || defaultStartTime).toString(),
+                endTime: (endTime || now).toString()
             });
+            
             const res = await apiClient.get(`/api/v1/candles?${params}`);
             return res.data;
         } catch (err: unknown) {
             const axiosError = err as { response?: { data?: { message?: string } } };
             throw new Error(axiosError.response?.data?.message || "Failed to fetch candles");
+        }
+    },
+
+    // Get latest candle for real-time updates
+    getLatestCandle: async (asset: string, timeframe: string = '1m') => {
+        try {
+            // Check if user is authenticated before making the request
+            requireAuth();
+
+            const params = new URLSearchParams({
+                asset: asset, // Keep the full symbol like BTCUSDT
+                ts: timeframe
+            });
+            
+            const res = await apiClient.get(`/api/v1/candles/latest?${params}`);
+            return res.data;
+        } catch (err: unknown) {
+            const axiosError = err as { response?: { data?: { message?: string } } };
+            throw handleAuthError(axiosError.response?.data?.message);
         }
     },
 
@@ -174,4 +229,14 @@ export const api = {
     // Utility functions for token management
     getToken: getAuthToken,
     isAuthenticated: () => !!getAuthToken(),
+    
+    // Debug helper to check auth status
+    checkAuthStatus: () => {
+        const token = getAuthToken();
+        return {
+            hasToken: !!token,
+            token: token ? token.substring(0, 20) + '...' : null, // Only show first 20 chars for security
+            isExpired: token ? isTokenExpired(token) : null
+        };
+    },
 };

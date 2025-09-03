@@ -114,11 +114,21 @@ async function start() {
     console.log(`WebSocket server running on port ${PORT}`);
 
     wss.on('connection', (ws) => {
-        ws.on('error', (err) => console.error('WebSocket error:', err));
+        console.log('New WebSocket connection established');
+        
+        ws.on('error', (err) => {
+            console.error('WebSocket connection error:', err);
+        });
+
+        ws.on('close', (code, reason) => {
+            console.log(`WebSocket connection closed: ${code} ${reason}`);
+            detachClientFromSymbols(ws);
+        });
 
         ws.on('message', (buf) => {
             try {
                 const msg = JSON.parse(buf.toString());
+                console.log('Received WebSocket message:', msg);
 
                 switch (msg.op) {
                     case 'subscribe': {
@@ -146,8 +156,6 @@ async function start() {
                 }
             }
         });
-
-        ws.on("close", () => detachClientFromSymbols(ws));
     });
 }
 

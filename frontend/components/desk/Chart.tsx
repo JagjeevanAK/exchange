@@ -1,6 +1,5 @@
 "use client"
 
-import dayjs from "dayjs";
 import { useEffect, useState, useRef } from "react";
 import { useTheme } from "next-themes";
 import {
@@ -11,9 +10,17 @@ import {
 } from "lightweight-charts-react-components";
 import type { CandlestickData } from "lightweight-charts";
 import { ColorType } from "lightweight-charts";
+import { useChartData } from "@/hooks/useChartData";
+import { useTradingContext } from "./TradingContext";
 
 export default function MainChart() {
-    const [data, setData] = useState<CandlestickData[]>(candlestickSeriesData);
+    const { selectedSymbol, timeInterval } = useTradingContext();
+    const { data, loading, error } = useChartData({
+        symbol: selectedSymbol,
+        timeframe: timeInterval,
+        enableRealTime: true
+    });
+    
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const [chartDimensions, setChartDimensions] = useState({ width: 800, height: 600 });
     const { resolvedTheme } = useTheme();
@@ -48,17 +55,36 @@ export default function MainChart() {
         };
     }, []);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setData(prevData => {
-                const lastDataPoint = prevData[prevData.length - 1];
-                const newDataPoint = generateNextDataPoint(lastDataPoint);
-                return [...prevData, newDataPoint];
-            });
-        }, 1000);
+    // Show loading or error states
+    if (loading) {
+        return (
+            <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">Loading chart data...</p>
+                </div>
+            </div>
+        );
+    }
 
-        return () => clearInterval(interval);
-    }, []);
+    if (error) {
+        return (
+            <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-red-500">Error loading chart: {error}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!data || data.length === 0) {
+        return (
+            <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">No chart data available for {selectedSymbol}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
@@ -112,46 +138,4 @@ export default function MainChart() {
             )}
         </div>
     );
-};
-
-const candlestickSeriesData = [
-    { time: "2025-01-04", open: 80, high: 82.65, low: 76.67, close: 78.71 },
-    { time: "2025-01-05", open: 78.71, high: 82.26, low: 75.37, close: 80.42 },
-    { time: "2025-01-06", open: 80.42, high: 83.58, low: 80.16, close: 82.39 },
-    { time: "2025-01-07", open: 82.39, high: 87.09, low: 79.75, close: 83.48 },
-    { time: "2025-01-08", open: 83.48, high: 85.57, low: 82.5, close: 83.54 },
-    { time: "2025-01-09", open: 83.54, high: 86.97, low: 83.3, close: 86.6 },
-    { time: "2025-01-10", open: 86.6, high: 88.95, low: 86.37, close: 88.02 },
-    { time: "2025-01-11", open: 88.02, high: 88.91, low: 85.93, close: 87.38 },
-    { time: "2025-01-12", open: 87.38, high: 87.63, low: 84.52, close: 85.36 },
-    { time: "2025-01-13", open: 85.36, high: 90.17, low: 84.21, close: 84.76 },
-    { time: "2025-01-14", open: 84.76, high: 86.22, low: 83.51, close: 85.99 },
-    { time: "2025-01-15", open: 85.99, high: 86.35, low: 83.83, close: 86.27 },
-    { time: "2025-01-16", open: 86.27, high: 90.39, low: 83.85, close: 89.13 },
-    { time: "2025-01-17", open: 89.13, high: 93.88, low: 88.65, close: 93.82 },
-    { time: "2025-01-18", open: 93.82, high: 97.07, low: 91.0, close: 94.58 },
-];
-
-const generateNextDataPoint = (last: CandlestickData): CandlestickData => {
-    const time = dayjs(last.time.toString()).add(1, "day").format("YYYY-MM-DD");
-
-    const open = last.close;
-
-    const volatility = (Math.random() * open) / 10 + 1;
-    const direction = Math.random() > 0.5 ? 1 : -1;
-    const change = volatility * direction;
-    const minThreshold = 5;
-
-    const close =
-        open + change >= minThreshold
-            ? open + change
-            : open - change < -minThreshold
-                ? open - change
-                : open + change;
-
-    const high = Math.max(open, close) + volatility / 2;
-    const potentialLow = Math.min(open, close) - volatility / 2;
-    const low = potentialLow >= minThreshold ? potentialLow : Math.max(open, close);
-
-    return { time, open, high, low, close };
 };

@@ -12,7 +12,6 @@ const PriceCard = () => {
     const { selectedSymbol } = useTradingContext();
     const [currentPrice, setCurrentPrice] = useState(0);
     const { marketData, isConnected, subscribe } = useWebSocket();
-
     const handleTradeUpdate = useCallback((marketData: any) => {
         if (marketData.bid && marketData.ask) {
             // Use mid price as current price

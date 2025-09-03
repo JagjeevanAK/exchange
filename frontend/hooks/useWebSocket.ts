@@ -34,10 +34,11 @@ export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn 
   const connect = useCallback(() => {
     try {
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080';
+      console.log('Attempting to connect to WebSocket:', wsUrl);
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
         setIsConnected(true);
         setError(null);
         reconnectAttempts.current = 0;
@@ -62,20 +63,30 @@ export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn 
           }
 
           // Handle market data updates
-          if (data.symbol && (data.bid !== undefined || data.ask !== undefined)) {
-            setMarketData(prev => {
-              const newMap = new Map(prev);
-              const existing = newMap.get(data.symbol) || { symbol: data.symbol, bid: 0, ask: 0 };
-              
-              newMap.set(data.symbol, {
-                ...existing,
-                bid: data.bid !== undefined ? data.bid : existing.bid,
-                ask: data.ask !== undefined ? data.ask : existing.ask,
-                timestamp: Date.now()
+          if (data.symbol || data.s) {
+            const symbol = data.symbol || data.s;
+            const price = parseFloat(data.price || data.p || 0);
+            
+            if (symbol && price > 0) {
+              setMarketData(prev => {
+                const newMap = new Map(prev);
+                const existing = newMap.get(symbol) || { symbol, bid: 0, ask: 0 };
+                
+                // For trade data, use the trade price as both bid and ask with small spread
+                const spread = price * 0.0001; // 0.01% spread
+                const bid = price - spread;
+                const ask = price + spread;
+                
+                newMap.set(symbol, {
+                  symbol,
+                  bid,
+                  ask,
+                  timestamp: Date.now()
+                });
+                
+                return newMap;
               });
-              
-              return newMap;
-            });
+            }
           }
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
@@ -97,7 +108,13 @@ export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn 
       };
 
       wsRef.current.onerror = (event) => {
-        console.error('WebSocket error:', event);
+        console.error('WebSocket error:', {
+          type: event.type,
+          target: event.target,
+          readyState: wsRef.current?.readyState,
+          url: wsRef.current?.url,
+          error: event
+        });
         setError('WebSocket connection error');
       };
 
