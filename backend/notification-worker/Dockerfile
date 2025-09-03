@@ -19,25 +19,13 @@ FROM base AS prerelease
 COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 
-# Generate Prisma client
-RUN bunx prisma generate
-
 # Copy production dependencies and source code into final image
 FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /app/index.ts .
-COPY --from=prerelease /app/routes ./routes
-COPY --from=prerelease /app/middlewares ./middlewares
-COPY --from=prerelease /app/lib ./lib
-COPY --from=prerelease /app/assets ./assets
-COPY --from=prerelease /app/types ./types
-COPY --from=prerelease /app/prisma ./prisma
-COPY --from=prerelease /app/generated ./generated
+COPY --from=prerelease /app/templetes ./templetes
 COPY --from=prerelease /app/package.json .
 COPY --from=prerelease /app/tsconfig.json .
-
-# Expose port
-EXPOSE 3001
 
 # Run the app
 USER bun

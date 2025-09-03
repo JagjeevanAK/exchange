@@ -68,25 +68,77 @@ const initDB = async () => {
                 console.log(`View ${viewName} might already exist:`, e instanceof Error ? e.message : String(e));
             }
 
+            // Create refresh policy for each view with appropriate intervals
             try {
+                // Determine appropriate policy intervals based on timeframe
+                let startOffset, endOffset, scheduleInterval;
+                
+                switch (tf.name) {
+                    case '1s':
+                        startOffset = 'INTERVAL \'1 hour\'';
+                        endOffset = 'INTERVAL \'1 second\'';
+                        scheduleInterval = 'INTERVAL \'10 seconds\'';
+                        break;
+                    case '1m':
+                        startOffset = 'INTERVAL \'2 hours\'';
+                        endOffset = 'INTERVAL \'1 minute\'';
+                        scheduleInterval = 'INTERVAL \'1 minute\'';
+                        break;
+                    case '5m':
+                        startOffset = 'INTERVAL \'6 hours\'';
+                        endOffset = 'INTERVAL \'5 minutes\'';
+                        scheduleInterval = 'INTERVAL \'5 minutes\'';
+                        break;
+                    case '15m':
+                        startOffset = 'INTERVAL \'1 day\'';
+                        endOffset = 'INTERVAL \'15 minutes\'';
+                        scheduleInterval = 'INTERVAL \'15 minutes\'';
+                        break;
+                    case '30m':
+                        startOffset = 'INTERVAL \'2 days\'';
+                        endOffset = 'INTERVAL \'30 minutes\'';
+                        scheduleInterval = 'INTERVAL \'30 minutes\'';
+                        break;
+                    case '1H':
+                        startOffset = 'INTERVAL \'3 days\'';
+                        endOffset = 'INTERVAL \'1 hour\'';
+                        scheduleInterval = 'INTERVAL \'1 hour\'';
+                        break;
+                    case '1D':
+                        startOffset = 'INTERVAL \'7 days\'';
+                        endOffset = 'INTERVAL \'1 day\'';
+                        scheduleInterval = 'INTERVAL \'1 day\'';
+                        break;
+                    case '1W':
+                        startOffset = 'INTERVAL \'30 days\'';
+                        endOffset = 'INTERVAL \'1 week\'';
+                        scheduleInterval = 'INTERVAL \'1 week\'';
+                        break;
+                    default:
+                        startOffset = 'INTERVAL \'1 day\'';
+                        endOffset = `INTERVAL '${tf.interval}'`;
+                        scheduleInterval = `INTERVAL '${tf.interval}'`;
+                }
+
                 await client.query(`
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM timescaledb_information.continuous_aggregates
-                            WHERE view_name = '${viewName}'
-                        ) THEN
-                            PERFORM add_continuous_aggregate_policy(
-                                '${viewName}',
-                                start_offset => INTERVAL '1 day',
-                                end_offset   => INTERVAL '${tf.interval}',
-                                schedule_interval => INTERVAL '${tf.interval}'
-                            );
-                        END IF;
-                    END $$;
+                    SELECT add_continuous_aggregate_policy(
+                        '${viewName}',
+                        start_offset => ${startOffset},
+                        end_offset => ${endOffset},
+                        schedule_interval => ${scheduleInterval}
+                    );
                 `);
+                console.log(`Created refresh policy for ${viewName}`);
             } catch (e) {
                 console.log(`Policy for ${viewName} might already exist:`, e instanceof Error ? e.message : String(e));
+                
+                // If policy already exists, try to manually refresh the view
+                try {
+                    await client.query(`CALL refresh_continuous_aggregate('${viewName}', NULL, NULL);`);
+                    console.log(`Manually refreshed ${viewName}`);
+                } catch (refreshError) {
+                    console.log(`Could not refresh ${viewName}:`, refreshError instanceof Error ? refreshError.message : String(refreshError));
+                }
             }
         }
         

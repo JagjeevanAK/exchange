@@ -157,6 +157,9 @@ export const api = {
     // Candles/Chart data APIs
     getCandles: async (asset: string, timeframe: string, startTime?: number, endTime?: number) => {
         try {
+            // Check if user is authenticated before making the request
+            requireAuth();
+
             // Default to last 24 hours if no time range provided
             const now = Math.floor(Date.now() / 1000);
             const defaultStartTime = now - (24 * 60 * 60); // 24 hours ago
@@ -172,7 +175,7 @@ export const api = {
             return res.data;
         } catch (err: unknown) {
             const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Failed to fetch candles");
+            throw handleAuthError(axiosError.response?.data?.message);
         }
     },
 

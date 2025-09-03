@@ -125,6 +125,12 @@ export default function MainChart() {
                             borderDownColor: '#F23645',
                             wickUpColor: '#079981',
                             wickDownColor: '#F23645',
+                            // Add minimum candle body size for better visibility
+                            priceFormat: {
+                                type: 'price',
+                                precision: 2,
+                                minMove: 0.01,
+                            },
                         }}
                     />
                     <TimeScale>

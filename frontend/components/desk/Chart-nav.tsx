@@ -11,7 +11,6 @@ export default function ChartNav(){
     // const isDark = resolvedTheme === 'dark';
 
     const intervalButtons = [
-        { key: '1s', label: '1s' },
         { key: '1m', label: '1m' },
         { key: '5m', label: '5m' },
         { key: '15m', label: '15m' },

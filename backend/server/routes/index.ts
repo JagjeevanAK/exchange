@@ -20,7 +20,7 @@ router.use('/user', signup);
 router.use('/user', signin);
 router.use('/user', middlewares.auth, balance);
 router.use('/assets', middlewares.auth, assets);
-router.use('/candles', middlewares.auth, candles);
+router.use('/candles', candles);
 router.use('/trades', middlewares.auth, trades);
 router.use('/trades', middlewares.auth, openTrades);
 router.use('/trade', middlewares.auth, trade);
