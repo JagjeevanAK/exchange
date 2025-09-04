@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 interface WebSocketMessage {
   op: string;
   symbols?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface MarketData {
@@ -62,15 +62,43 @@ export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn 
             return;
           }
 
-          // Handle market data updates
-          if (data.symbol || data.s) {
-            const symbol = data.symbol || data.s;
-            const price = parseFloat(data.price || data.p || 0);
+          // Handle market data updates - this could be from Binance trade data
+          // Format from backend: { s: "BTCUSDT", p: "43000.50", T: Date, E: Date, t: "123", q: "0.001" }
+          if (data.s && data.p) {
+            const symbol = data.s;
+            const price = parseFloat(data.p);
+            const timestamp = data.T ? new Date(data.T).getTime() : Date.now();
+            
+            if (symbol && price > 0) {
+              console.log('WebSocket: Received trade data:', { symbol, price, timestamp });
+              
+              setMarketData(prev => {
+                const newMap = new Map(prev);
+                
+                // For trade data, use the trade price as both bid and ask with small spread
+                const spread = price * 0.0001; // 0.01% spread
+                const bid = price - spread;
+                const ask = price + spread;
+                
+                newMap.set(symbol, {
+                  symbol,
+                  bid,
+                  ask,
+                  timestamp
+                });
+                
+                return newMap;
+              });
+            }
+          }
+          // Legacy format support
+          else if (data.symbol || data.price) {
+            const symbol = data.symbol;
+            const price = parseFloat(data.price || 0);
             
             if (symbol && price > 0) {
               setMarketData(prev => {
                 const newMap = new Map(prev);
-                const existing = newMap.get(symbol) || { symbol, bid: 0, ask: 0 };
                 
                 // For trade data, use the trade price as both bid and ask with small spread
                 const spread = price * 0.0001; // 0.01% spread
@@ -171,7 +199,7 @@ export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn 
         wsRef.current.close(1000);
       }
     };
-  }, [connect]);
+  }, [connect, initialSymbols]);
 
   return {
     marketData,

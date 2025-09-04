@@ -1,7 +1,9 @@
 import { Redis } from 'ioredis';
 import { WebSocketServer, WebSocket } from 'ws';
 
-const sub = new Redis;
+// Use Redis URL from environment variable, fallback to default for local development
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const sub = new Redis(redisUrl);
 const PORT = process.env.PORT || '8080';
 
 // Keeps track of all clients per symbol (on this WS node)
@@ -109,6 +111,10 @@ async function start() {
     sub.on('error', (e) => console.error('Redis error:', e));
     sub.on('end', () => console.log("Redis connection closed"));
     sub.on('reconnecting', () => console.log("Reconnecting to Redis..."));
+    sub.on('connect', () => console.log(`Successfully connected to Redis at ${redisUrl}`));
+    sub.on('ready', () => console.log('Redis connection is ready'));
+
+    console.log(`Attempting to connect to Redis at: ${redisUrl}`);
 
     const wss = new WebSocketServer({ port: parseInt(PORT, 10) });
     console.log(`WebSocket server running on port ${PORT}`);

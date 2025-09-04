@@ -4,9 +4,12 @@ import twilio from "twilio";
 import { smsTemplete } from "./templetes/smsTemplete";
 import { emailTemplate } from "./templetes/emailTemplete";
 
+// Use environment variables for configuration
+const kafkaBrokers = process.env.KAFKA_BROKERS?.split(',') || ['kafka:29092'];
+
 const kafka = new Kafka({
-    clientId: 'exchange',
-    brokers: ['localhost:9092']
+    clientId: 'exchange-notification-worker',
+    brokers: kafkaBrokers
 });
 
 const consumer = kafka.consumer({
@@ -14,20 +17,34 @@ const consumer = kafka.consumer({
 });
 
 const resend = new Resend(process.env.RESEND_API_KEY as string);
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+// Only initialize Twilio if credentials are provided
+let client: any = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && 
+    process.env.TWILIO_ACCOUNT_SID !== 'your-twilio-sid' && 
+    process.env.TWILIO_AUTH_TOKEN !== 'your-twilio-token') {
+    client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+} else {
+    console.warn('Twilio credentials not configured. SMS notifications will be disabled.');
+}
 
 const mailConsumer = async () => {
-    await consumer.connect();
+    try {
+        console.log(`Connecting to Kafka brokers: ${kafkaBrokers.join(', ')}`);
+        await consumer.connect();
+        console.log('Successfully connected to Kafka');
 
-    consumer.subscribe({
-        topic: "email",
-        fromBeginning: true
-    });
+        console.log('Subscribing to email topic...');
+        consumer.subscribe({
+            topic: "email",
+            fromBeginning: true
+        });
 
-    await consumer.run({
-        eachMessage: async ({ message }) => {
-            try{
-                if(!message.value) return;
+        console.log('Starting message consumption...');
+        await consumer.run({
+            eachMessage: async ({ message }) => {
+                try{
+                    if(!message.value) return;
 
                 const payload = JSON.parse(message.value.toString());
                 const { 
@@ -48,18 +65,30 @@ const mailConsumer = async () => {
                     text
                 });
 
-                const body = smsTemplete(asset, amount, quantity, order);
-                await client.messages.create({
-                    body,
-                    from: process.env.TWILIO_PHONE,
-                    to,
-                });
+                // Send SMS only if Twilio client is configured
+                if (client) {
+                    const body = smsTemplete(asset, amount, quantity, order);
+                    await client.messages.create({
+                        body,
+                        from: process.env.TWILIO_PHONE_NUMBER,
+                        to,
+                    });
+                } else {
+                    console.log('SMS not sent - Twilio not configured');
+                }
             } catch(e){
                 console.error("Error while sending Email and SMS ", e);
             }
         }
+    });
+    } catch (error) {
+        console.error('Error in mailConsumer:', error);
+        // Retry connection after 5 seconds
+        setTimeout(() => {
+            console.log('Retrying Kafka connection...');
+            mailConsumer();
+        }, 5000);
     }
-    )
 }
 
 mailConsumer();

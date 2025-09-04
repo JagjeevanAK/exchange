@@ -1,7 +1,11 @@
 import { Redis } from "ioredis";
 import { insertTrade } from "../db/insertData";
 
-const redis = new Redis();
+// Use Redis URL from environment variable, fallback to default for local development
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redis = new Redis(redisUrl);
+
+console.log(`DB Queue connecting to Redis at: ${redisUrl}`);
 
 export async function enqueue(chan: string, data: string){
     await redis.lpush(chan, data);

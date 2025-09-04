@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 import { useWebSocket } from './useWebSocket';
+import { useBinanceKlineStream } from './useBinanceKlineStream';
 import type { CandlestickData, Time } from 'lightweight-charts';
 
 interface CandleResponse {
@@ -25,14 +26,67 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
     const [data, setData] = useState<CandlestickData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [hasHistoricalData, setHasHistoricalData] = useState<boolean | null>(null);
     
-    // WebSocket hook for real-time data
+    // WebSocket hook for real-time data (fallback for trade updates)
     const { marketData, isConnected, subscribe, unsubscribe } = useWebSocket();
+    
+    // Binance kline stream for when no historical data is available
+    const { 
+        candleData: binanceData,
+        isConnected: binanceConnected,
+        error: binanceError
+    } = useBinanceKlineStream({
+        symbol,
+        interval: timeframe,
+        enabled: hasHistoricalData === false && enableRealTime
+    });
     
     // Track current candle for real-time updates
     const currentCandleRef = useRef<CandlestickData | null>(null);
     const timeframeSecondsRef = useRef<number>(60); // Default to 1 minute
     const previousSymbolRef = useRef<string>('');
+    const binanceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // Use Binance data when no historical data is available
+    useEffect(() => {
+        if (hasHistoricalData === false) {
+            if (binanceError) {
+                console.error('useChartData: Binance stream error:', binanceError);
+                setError(`Live data unavailable: ${binanceError}`);
+                setLoading(false);
+                return;
+            }
+
+            if (binanceData.length > 0) {
+                console.log('useChartData: Using Binance kline data, received', binanceData.length, 'candles for', symbol);
+                setData(binanceData);
+                setLoading(false);
+                setError(null);
+                
+                // Clear any existing timeout
+                if (binanceTimeoutRef.current) {
+                    clearTimeout(binanceTimeoutRef.current);
+                    binanceTimeoutRef.current = null;
+                }
+            } else if (binanceConnected) {
+                console.log('useChartData: Connected to Binance, waiting for kline data for', symbol);
+                
+                // Set a timeout to show error if no data arrives within 10 seconds
+                if (binanceTimeoutRef.current) {
+                    clearTimeout(binanceTimeoutRef.current);
+                }
+                binanceTimeoutRef.current = setTimeout(() => {
+                    console.log('useChartData: Timeout waiting for Binance data');
+                    setError('No live data received. Please try a different symbol or timeframe.');
+                    setLoading(false);
+                }, 10000);
+            } else {
+                console.log('useChartData: Connecting to Binance stream for', symbol);
+                // Keep loading state while connecting
+            }
+        }
+    }, [binanceData, hasHistoricalData, symbol, binanceError, binanceConnected]);
     
     // Convert timeframe string to seconds
     const getTimeframeSeconds = useCallback((tf: string): number => {
@@ -64,11 +118,19 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
         }));
     }, []);
 
-    // Subscribe to WebSocket for real-time updates and handle symbol changes
+    // Subscribe to WebSocket for real-time updates (only when we have historical data)
     useEffect(() => {
-        console.log('useChartData: WebSocket subscription effect triggered:', { symbol, enableRealTime, isConnected });
+        console.log('useChartData: WebSocket subscription effect triggered:', { symbol, enableRealTime, isConnected, hasHistoricalData });
         
-        if (!enableRealTime || !isConnected) return;
+        if (!enableRealTime || !isConnected || hasHistoricalData !== true) {
+            // Unsubscribe if we shouldn't be using WebSocket
+            if (previousSymbolRef.current) {
+                console.log('useChartData: Unsubscribing from WebSocket:', previousSymbolRef.current);
+                unsubscribe([previousSymbolRef.current]);
+                previousSymbolRef.current = '';
+            }
+            return;
+        }
         
         // Unsubscribe from previous symbol if it exists and is different
         if (previousSymbolRef.current && previousSymbolRef.current !== symbol) {
@@ -76,9 +138,9 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
             unsubscribe([previousSymbolRef.current]);
         }
         
-        // Subscribe to new symbol and clear data for symbol change
+        // Subscribe to new symbol
         if (symbol) {
-            console.log('useChartData: Subscribing to new symbol:', symbol);
+            console.log('useChartData: Subscribing to WebSocket for symbol:', symbol);
             subscribe([symbol]);
             previousSymbolRef.current = symbol;
             
@@ -86,18 +148,18 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
             currentCandleRef.current = null;
         }
         
-        // Cleanup function to unsubscribe when component unmounts or symbol changes
+        // Cleanup function to unsubscribe when component unmounts or dependencies change
         return () => {
-            if (symbol) {
+            if (symbol && hasHistoricalData === true) {
                 console.log('useChartData: Cleanup - unsubscribing from:', symbol);
                 unsubscribe([symbol]);
             }
         };
-    }, [symbol, enableRealTime, isConnected, subscribe, unsubscribe]);
+    }, [symbol, enableRealTime, isConnected, hasHistoricalData, subscribe, unsubscribe]);
 
-    // Handle real-time price updates from WebSocket
+    // Handle real-time price updates from WebSocket (only when we have historical data)
     useEffect(() => {
-        if (!enableRealTime || !symbol) return;
+        if (!enableRealTime || !symbol || hasHistoricalData !== true) return;
         
         const liveData = marketData.get(symbol);
         if (!liveData || !liveData.timestamp) return;
@@ -141,7 +203,7 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
             
             return prevData;
         });
-    }, [marketData, symbol, timeframe, enableRealTime]);
+    }, [marketData, symbol, timeframe, enableRealTime, hasHistoricalData]);
 
     // Fetch historical data from TSDB
     const fetchHistoricalData = useCallback(async () => {
@@ -181,12 +243,18 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
             if (response.candles && Array.isArray(response.candles)) {
                 const chartData = convertToChartData(response.candles);
                 setData(chartData);
+                setHasHistoricalData(true);
+                console.log(`useChartData: Loaded ${chartData.length} historical candles for ${symbol}`);
             } else {
+                console.log('useChartData: No historical data available, will use Binance kline stream');
+                setHasHistoricalData(false);
                 setData([]);
             }
         } catch (err) {
             console.error('useChartData: Error fetching chart data:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch chart data');
+            console.log('useChartData: Falling back to Binance kline stream');
+            setError(null); // Don't show error, just use live data
+            setHasHistoricalData(false);
             setData([]);
         } finally {
             setLoading(false);
@@ -204,8 +272,30 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
         setData([]);
         setLoading(true);
         setError(null);
+        setHasHistoricalData(null); // Reset historical data flag
         currentCandleRef.current = null;
-    }, [symbol, timeframe]);
+        
+        // Clear any existing Binance timeout
+        if (binanceTimeoutRef.current) {
+            clearTimeout(binanceTimeoutRef.current);
+            binanceTimeoutRef.current = null;
+        }
+        
+        // Reset previous symbol reference to ensure clean WebSocket subscription management
+        if (previousSymbolRef.current) {
+            unsubscribe([previousSymbolRef.current]);
+            previousSymbolRef.current = '';
+        }
+    }, [symbol, timeframe, unsubscribe]);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (binanceTimeoutRef.current) {
+                clearTimeout(binanceTimeoutRef.current);
+            }
+        };
+    }, []);
 
     return {
         data,
