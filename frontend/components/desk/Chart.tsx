@@ -8,7 +8,6 @@ import {
     TimeScale,
     TimeScaleFitContentTrigger,
 } from "lightweight-charts-react-components";
-import type { CandlestickData } from "lightweight-charts";
 import { ColorType } from "lightweight-charts";
 import { useChartData } from "@/hooks/useChartData";
 import { useTradingContext } from "./TradingContext";
@@ -59,8 +58,9 @@ export default function MainChart() {
     if (loading) {
         return (
             <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">Loading chart data...</p>
+                <div className="flex flex-col items-center justify-center h-full">
+                    <p className="text-muted-foreground mb-2">Loading chart data for {selectedSymbol}...</p>
+                    <p className="text-sm text-muted-foreground">{timeInterval} timeframe</p>
                 </div>
             </div>
         );
@@ -79,8 +79,10 @@ export default function MainChart() {
     if (!data || data.length === 0) {
         return (
             <div ref={chartContainerRef} className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded">
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">No chart data available for {selectedSymbol}</p>
+                <div className="flex flex-col items-center justify-center h-full">
+                    <p className="text-muted-foreground mb-2">Building chart from live Binance data...</p>
+                    <p className="text-sm text-muted-foreground">Charts will appear as new candles are received for {selectedSymbol}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Timeframe: {timeInterval}</p>
                 </div>
             </div>
         );

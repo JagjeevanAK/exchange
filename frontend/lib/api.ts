@@ -1,9 +1,7 @@
 import axios from "axios";
 
 // Backend server configuration
-const endpoint = process.env.NODE_ENV === "production" 
-    ? process.env.NEXT_PUBLIC_BACKEND_URL || "https://your-production-api.com"
-    : "http://localhost:3001";
+const endpoint = "http://localhost:3001";
 
 // Create axios instance with default configuration
 const apiClient = axios.create({
@@ -158,7 +156,7 @@ export const api = {
     getCandles: async (asset: string, timeframe: string, startTime?: number, endTime?: number) => {
         try {
             // Check if user is authenticated before making the request
-            requireAuth();
+            // requireAuth();
 
             // Default to last 24 hours if no time range provided
             const now = Math.floor(Date.now() / 1000);

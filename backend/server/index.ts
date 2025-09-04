@@ -7,7 +7,7 @@ import router from './routes';
 
 configDotenv();
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001');
 
 // Session configuration for passport
 app.use(session({
@@ -38,7 +38,7 @@ app.use(express.json());
 
 app.use('/api/v1/', router);
 
-app.listen(PORT, () => {
-    console.log(`server is running at http://localhost:${PORT}/`)
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`server is running at http://0.0.0.0:${PORT}/`)
 });
  
