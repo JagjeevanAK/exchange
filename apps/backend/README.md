@@ -1,4 +1,6 @@
-# server
+# backend
+
+Located inside `apps/backend` of the turborepo.
 
 To install dependencies:
 

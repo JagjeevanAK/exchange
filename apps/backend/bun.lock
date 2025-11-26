@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "server",
+      "name": "backend",
       "dependencies": {
         "@prisma/client": "^6.15.0",
         "@types/cors": "^2.8.19",

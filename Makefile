@@ -25,19 +25,21 @@ clean: ## Stop services and remove volumes (WARNING: deletes data)
 restart: down up ## Restart all services
 
 migrate: ## Run database migrations
-	docker-compose exec server bunx prisma migrate dev
+	docker-compose exec backend bunx prisma migrate dev
 
 seed: ## Seed the database
-	docker-compose exec server bunx prisma db seed
+	docker-compose exec backend bunx prisma db seed
 
 reset-db: ## Reset database (WARNING: deletes all data)
-	docker-compose exec server bunx prisma migrate reset
+	docker-compose exec backend bunx prisma migrate reset
 
 status: ## Show service status
 	docker-compose ps
 
-shell-server: ## Open shell in server container
-	docker-compose exec server sh
+shell-backend: ## Open shell in backend container
+	docker-compose exec backend sh
+
+shell-server: shell-backend ## Backwards compatibility alias
 
 shell-poller: ## Open shell in poller container
 	docker-compose exec poller sh

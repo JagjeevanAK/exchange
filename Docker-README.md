@@ -1,14 +1,24 @@
 # Exchange Platform - Docker Setup
 
-This repository contains a cryptocurrency exchange platform with the following services:
+This repository now uses a Turborepo workspace with each runtime isolated inside `apps/*`. The platform ships the following services:
 
 ## Services
 
 - **PostgreSQL**: Database for storing user data, trades, and holdings
 - **Redis**: Pub/sub messaging and caching
-- **Server**: Express.js API server with Prisma ORM
+- **Backend API**: Express.js API server with Prisma ORM (located in `apps/backend`)
 - **Poller**: Service that connects to Binance WebSocket for real-time data
 - **WS Gateway**: WebSocket server for client connections
+- **Notification Worker**: Kafka consumer responsible for outbound notifications
+- **Frontend**: Next.js desk UI (located in `apps/frontend`)
+
+## Monorepo layout
+
+- `apps/backend` – primary API / Prisma service (formerly `backend/server`)
+- `apps/poller` – market data poller
+- `apps/ws-gateway` – WebSocket fan-out service
+- `apps/notification-worker` – email/SMS worker
+- `apps/frontend` – Next.js interface
 
 ## Quick Start
 
@@ -39,7 +49,7 @@ This repository contains a cryptocurrency exchange platform with the following s
 4. **Initialize the database:**
    ```bash
    # Wait for services to be healthy, then run migrations
-   docker-compose exec server bunx prisma migrate dev
+   docker-compose exec backend bunx prisma migrate dev
    ```
 
 5. **View logs:**
@@ -48,7 +58,7 @@ This repository contains a cryptocurrency exchange platform with the following s
    docker-compose logs -f
    
    # Specific service
-   docker-compose logs -f server
+   docker-compose logs -f backend
    ```
 
 ### Development Mode
@@ -77,7 +87,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ## Service URLs
 
-- **API Server**: http://localhost:3000
+- **Backend API**: http://localhost:3001
 - **WebSocket Gateway**: ws://localhost:8080
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
@@ -133,7 +143,7 @@ ws.onopen = () => {
 
 2. Run database migrations:
    ```bash
-   docker-compose exec server bunx prisma migrate dev
+   docker-compose exec backend bunx prisma migrate dev
    ```
 
 ### Redis connection issues
@@ -176,17 +186,17 @@ docker-compose down -v
 
 ### Adding New Services
 
-1. Create a new directory under `backend/` or `frontend/`
+1. Create a new directory under `apps/`
 2. Add service definition to `docker-compose.yml`
 3. Create corresponding `Dockerfile`
 4. Update this README
 
 ### Database Changes
 
-1. Modify `backend/server/prisma/schema.prisma`
+1. Modify `apps/backend/prisma/schema.prisma`
 2. Generate migration:
    ```bash
-   docker-compose exec server bunx prisma migrate dev --name migration-name
+   docker-compose exec backend bunx prisma migrate dev --name migration-name
    ```
 
 ### Environment Variables

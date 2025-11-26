@@ -1,5 +1,4 @@
 services:
-  # TimescaleDB Database
   timescaledb:
     image: timescale/timescaledb-ha:pg17
     container_name: timescaledb_container
@@ -17,7 +16,6 @@ services:
       timeout: 10s
       retries: 5
 
-  # Redis for pub/sub and caching
   redis:
     image: redis:7-alpine
     container_name: exchange-redis
@@ -31,7 +29,6 @@ services:
       timeout: 10s
       retries: 5
 
-  # Kafka for message queue
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     container_name: exchange-zookeeper
@@ -67,12 +64,12 @@ services:
       timeout: 10s
       retries: 5
 
-  # API Server
-  server:
+  # Backend API
+  backend:
     build:
-      context: ./backend/server
-      dockerfile: Dockerfile
-    container_name: exchange-server
+      context: ./apps/backend
+      dockerfile: ../../docker/backend.Dockerfile
+    container_name: exchange-backend
     environment:
       - DATABASE_URL=postgresql://user:password@timescaledb:5432/postgres
       - TIMESCALE_DATABASE_URL=postgresql://user:password@timescaledb:5432/postgres
@@ -91,7 +88,7 @@ services:
       kafka:
         condition: service_healthy
     volumes:
-      - ./backend/server:/app
+      - ./apps/backend:/app
       - /app/node_modules
       - /app/generated
     command: bun run dev
@@ -100,8 +97,8 @@ services:
   # Data Poller Service
   poller:
     build:
-      context: ./backend/poller
-      dockerfile: Dockerfile
+      context: ./apps/poller
+      dockerfile: ../../docker/poller.Dockerfile
     container_name: exchange-poller
     environment:
       - DATABASE_URL=postgresql://user:password@timescaledb:5432/postgres
@@ -113,7 +110,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./backend/poller:/app
+      - ./apps/poller:/app
       - /app/node_modules
     command: bun run dev
     restart: unless-stopped
@@ -121,8 +118,8 @@ services:
   # WebSocket Gateway
   ws-gateway:
     build:
-      context: ./backend/ws-gateway
-      dockerfile: Dockerfile
+      context: ./apps/ws-gateway
+      dockerfile: ../../docker/ws-gateway.Dockerfile
     container_name: exchange-ws-gateway
     environment:
       - PORT=8080
@@ -134,7 +131,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./backend/ws-gateway:/app
+      - ./apps/ws-gateway:/app
       - /app/node_modules
     command: bun run dev
     restart: unless-stopped
@@ -142,8 +139,8 @@ services:
   # Notification Worker
   notification-worker:
     build:
-      context: ./backend/notification-worker
-      dockerfile: Dockerfile
+      context: ./apps/notification-worker
+      dockerfile: ../../docker/notification-worker.Dockerfile
     container_name: exchange-notification-worker
     environment:
       - NODE_ENV=development
@@ -156,7 +153,7 @@ services:
       kafka:
         condition: service_healthy
     volumes:
-      - ./backend/notification-worker:/app
+      - ./apps/notification-worker:/app
       - /app/node_modules
     command: bun run dev
     restart: unless-stopped
@@ -164,8 +161,8 @@ services:
   # Frontend
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: ./apps/frontend
+      dockerfile: ../../docker/frontend.Dockerfile
     container_name: exchange-frontend
     environment:
       - NODE_ENV=development
@@ -174,7 +171,7 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - server
+      - backend
     restart: unless-stopped
 
 volumes:

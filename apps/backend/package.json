@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "backend",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -7,7 +7,8 @@
     "dev": "bun run --watch index.ts",
     "start": "bun run index.ts",
     "build": "bun build index.ts --outdir ./dist",
-    "generate": "bunx prisma generate"
+    "generate": "bunx prisma generate",
+    "clean": "rm -rf dist generated node_modules/.cache"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
