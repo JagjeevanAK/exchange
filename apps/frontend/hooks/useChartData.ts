@@ -43,6 +43,15 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
   const previousSymbolRef = useRef<string>('');
   const dataLoadedRef = useRef<boolean>(false);
 
+  // Store subscribe/unsubscribe in refs to avoid dependency issues
+  const subscribeRef = useRef(subscribe);
+  const unsubscribeRef = useRef(unsubscribe);
+
+  useEffect(() => {
+    subscribeRef.current = subscribe;
+    unsubscribeRef.current = unsubscribe;
+  }, [subscribe, unsubscribe]);
+
   // Convert timeframe string to seconds
   const getTimeframeSeconds = useCallback((tf: string): number => {
     const timeframeMap: { [key: string]: number } = {
@@ -86,13 +95,13 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
     // Unsubscribe from previous symbol if different
     if (previousSymbolRef.current && previousSymbolRef.current !== symbol) {
       console.log('useChartData: Unsubscribing from previous symbol:', previousSymbolRef.current);
-      unsubscribe([previousSymbolRef.current]);
+      unsubscribeRef.current([previousSymbolRef.current]);
     }
 
     // Subscribe to new symbol
     if (symbol) {
       console.log('useChartData: Subscribing to WS-Gateway for symbol:', symbol);
-      subscribe([symbol]);
+      subscribeRef.current([symbol]);
       previousSymbolRef.current = symbol;
       currentCandleRef.current = null;
     }
@@ -100,10 +109,10 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
     return () => {
       if (symbol) {
         console.log('useChartData: Cleanup - unsubscribing from:', symbol);
-        unsubscribe([symbol]);
+        unsubscribeRef.current([symbol]);
       }
     };
-  }, [symbol, enableRealTime, isConnected, subscribe, unsubscribe]);
+  }, [symbol, enableRealTime, isConnected]);
 
   // Handle real-time trade updates from WS-Gateway
   // Builds/updates candles from individual trade data
@@ -247,10 +256,10 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
 
     // Unsubscribe from previous symbol
     if (previousSymbolRef.current && previousSymbolRef.current !== symbol) {
-      unsubscribe([previousSymbolRef.current]);
+      unsubscribeRef.current([previousSymbolRef.current]);
       previousSymbolRef.current = '';
     }
-  }, [symbol, timeframe, unsubscribe]);
+  }, [symbol, timeframe]);
 
   return {
     data,
