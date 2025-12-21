@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { prisma } from '../lib/prsimaClient';
-import { TradeType } from '../generated/prisma';
+import { TradeType, Status } from '../prisma/generated/prisma/client';
 import { sendNotification } from '../lib/notification-queue';
 
 const router = Router();
@@ -15,7 +15,14 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    const { userId, email } = req.user;
+    const userId = req.user.userId;
+    const email = req.user.email;
+
+    if (!userId || !email) {
+      return res.status(401).json({
+        message: 'Unauthorized - Invalid user token',
+      });
+    }
 
     if (
       !asset ||
@@ -58,10 +65,10 @@ router.post('/', async (req: Request, res: Response) => {
         userId,
         asset,
         type: type.toUpperCase() as TradeType,
+        status: 'OPEN' as Status,
         leverage,
         margin,
         amount,
-        price: mockPrice,
         quantity,
       },
     });

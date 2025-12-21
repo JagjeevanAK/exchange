@@ -36,16 +36,37 @@ exchange/
 # Install dependencies
 bun install
 
-# Start infrastructure services (databases, Redis)
+# Start infrastructure services (TimescaleDB and Redis)
 bun run docker:up
 
 # Run all apps in development mode with proper ordering
 bun run dev
 ```
 
+## Development Workflow
+
+### 1. Start Infrastructure Services
+
+```bash
+# Start TimescaleDB and Redis
+bun run docker:up
+
+# Check if services are running
+docker ps
+```
+
+### 2. Run Application Services
+
+```bash
+# Start all apps in order: Poller → Backend → Notification Worker → WS Gateway → Frontend
+bun run dev
+
+# Press Ctrl+C to stop all services
+```
+
 ## Development Startup Order
 
-Turborepo is configured to start services in the correct order automatically:
+The `bun run dev` command uses a custom Node.js script (`scripts/dev.js`) to start services in the correct order:
 
 1. **Poller** - Starts first to begin collecting market data
 2. **Backend** - API server starts after poller is ready
@@ -53,13 +74,14 @@ Turborepo is configured to start services in the correct order automatically:
 4. **WS Gateway** - WebSocket server for real-time updates
 5. **Frontend** - Web application starts last
 
-This is achieved through `dependsOn` configuration in `turbo.json`, ensuring all dependencies are ready before dependent services start.
+Each service waits for the previous one to initialize before starting.
 
 ## Available Scripts
 
 ### Root Level
 
 - `bun run dev` - Start all apps in correct order (Poller → Backend → Notification → WS → Frontend)
+- `bun run dev:all` - Start all apps in parallel using Turborepo (no ordering)
 - `bun run build` - Build all apps
 - `bun run start` - Start all apps in production mode
 - `bun run lint` - Lint all apps
@@ -139,24 +161,53 @@ bun run build      # Build for production
 
 ## Docker Setup
 
-All Dockerfiles are centralized in the `docker/` directory for better organization.
-
-### Start All Services
-
-```bash
-docker-compose up -d
-```
+Docker Compose is configured to run only infrastructure services. Application services are run locally for faster development.
 
 ### Infrastructure Services
 
+```bash
+# Start infrastructure
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop infrastructure
+docker-compose down
+```
+
+The following services will be started:
+
 - **TimescaleDB** (PostgreSQL): Port 5433
 - **Redis**: Port 6379
+- **Prometheus**: Port 9090
+- **Grafana**: Port 3002 (username: admin, password: admin)
 
 ### Application Services
 
-- **Backend API**: http://localhost:3001
-- **Frontend**: http://localhost:3000
-- **WS Gateway**: ws://localhost:8080
+All application services (backend, frontend, poller, ws-gateway, notification-worker) are run locally using:
+
+```bash
+bun run dev
+```
+
+This approach provides:
+
+- Faster development workflow
+- Better debugging capabilities
+- Easier hot-reload and file watching
+- Lower resource usage
+
+### Monitoring
+
+Once infrastructure is running:
+
+1. **Start backend** to expose metrics: `bun run dev`
+2. **Access Prometheus**: http://localhost:9090
+3. **Access Grafana**: http://localhost:3002 (admin/admin)
+4. **View metrics**: http://localhost:3001/metrics
+
+See [MONITORING.md](./MONITORING.md) for detailed monitoring setup.
 
 ## Environment Variables
 

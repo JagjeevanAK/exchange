@@ -2,12 +2,7 @@
   "name": "exchange",
   "version": "1.0.0",
   "private": true,
-  "description": "Exchange Turborepo Monorepo",
-  "packageManager": "bun@1.0.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "description": "Exchange Turborepo",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -21,12 +16,19 @@
     "docker:logs": "docker-compose logs -f"
   },
   "devDependencies": {
-    "turbo": "^2.7.1",
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3"
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.6",
+    "typescript": "5.9.2"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "bun": ">=1.0.0"
+    "node": ">=18"
+  },
+  "packageManager": "bun@1.2.21",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "dotenv": "^17.2.3"
   }
 }
