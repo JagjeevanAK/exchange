@@ -11,7 +11,7 @@ exchange/
 │   ├── frontend/          # Next.js web application
 │   ├── poller/            # Market data polling service
 │   ├── ws-gateway/        # WebSocket gateway
-│   └── notification-worker/ # Kafka consumer for notifications
+│   └── notification-worker/ # BullMQ worker for notifications
 ├── docker/                # All Dockerfiles
 │   ├── backend.Dockerfile
 │   ├── frontend.Dockerfile
@@ -36,18 +36,30 @@ exchange/
 # Install dependencies
 bun install
 
-# Start infrastructure services (databases, Redis, Kafka)
+# Start infrastructure services (databases, Redis)
 bun run docker:up
 
-# Run all apps in development mode
+# Run all apps in development mode with proper ordering
 bun run dev
 ```
+
+## Development Startup Order
+
+Turborepo is configured to start services in the correct order automatically:
+
+1. **Poller** - Starts first to begin collecting market data
+2. **Backend** - API server starts after poller is ready
+3. **Notification Worker** - Starts to process notification jobs
+4. **WS Gateway** - WebSocket server for real-time updates
+5. **Frontend** - Web application starts last
+
+This is achieved through `dependsOn` configuration in `turbo.json`, ensuring all dependencies are ready before dependent services start.
 
 ## Available Scripts
 
 ### Root Level
 
-- `bun run dev` - Start all apps in development mode
+- `bun run dev` - Start all apps in correct order (Poller → Backend → Notification → WS → Frontend)
 - `bun run build` - Build all apps
 - `bun run start` - Start all apps in production mode
 - `bun run lint` - Lint all apps
@@ -67,7 +79,7 @@ bun run dev
 
 Express.js API server with Prisma ORM, JWT authentication, and Kafka integration.
 
-**Tech Stack:** Express, Prisma, PostgreSQL, Redis, Kafka, Passport.js
+**Tech Stack:** Express, Prisma, PostgreSQL, Redis, BullMQ, Passport.js
 
 ```bash
 cd apps/backend
@@ -115,9 +127,9 @@ bun run build      # Build for production
 
 ### Notification Worker (`apps/notification-worker`)
 
-Kafka consumer that sends email and SMS notifications.
+BullMQ worker that sends email and SMS notifications for trade executions.
 
-**Tech Stack:** Bun, Kafka, Resend, Twilio
+**Tech Stack:** Bun, BullMQ, Redis, Resend, Twilio
 
 ```bash
 cd apps/notification-worker
@@ -139,8 +151,6 @@ docker-compose up -d
 
 - **TimescaleDB** (PostgreSQL): Port 5433
 - **Redis**: Port 6379
-- **Kafka**: Port 9092
-- **Zookeeper**: Port 2181
 
 ### Application Services
 
@@ -158,7 +168,6 @@ Create `.env` files in each app directory:
 DATABASE_URL=postgresql://user:password@localhost:5433/postgres
 TIMESCALE_DATABASE_URL=postgresql://user:password@localhost:5433/postgres
 REDIS_URL=redis://localhost:6379
-KAFKA_BROKERS=localhost:9092
 JWT_SECRET=your-jwt-secret-key
 PORT=3001
 NODE_ENV=development
@@ -174,12 +183,14 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8080
 ### Notification Worker (`.env`)
 
 ```env
-KAFKA_BROKERS=localhost:9092
+REDIS_URL=redis://localhost:6379
 RESEND_API_KEY=your-resend-api-key
 TWILIO_ACCOUNT_SID=your-twilio-sid
 TWILIO_AUTH_TOKEN=your-twilio-token
 TWILIO_PHONE_NUMBER=your-twilio-phone
 ```
+
+See `.env.example` in the root directory for a complete list of environment variables.
 
 ## 🔍 Turborepo Features
 
@@ -215,11 +226,65 @@ bunx prisma generate
 ## Development Tips
 
 1. **Run specific app:**
+
    ```bash
    turbo run dev --filter=backend
    ```
 
 2. **Build specific app:**
+
+   ```bash
+   turbo run build --filter=frontend
+   ```
+
+3. **Clear Turborepo cache:**
+
+   ```bash
+   turbo run build --force
+   ```
+
+4. **View Turborepo execution graph:**
+
+   ```bash
+   turbo run dev --graph
+   ```
+
+5. **Run tasks in parallel (skip ordering):**
+   ```bash
+   turbo run dev --parallel
+   ```
+
+## Troubleshooting
+
+### Check Redis connection
+
+```bash
+redis-cli ping
+```
+
+### Database issues
+
+```bash
+# Check if TimescaleDB is running
+docker ps | grep timescaledb
+
+# View database logs
+docker logs timescaledb_container
+```
+
+### View service startup order
+
+The startup order is configured in `turbo.json`:
+
+- `poller#dev` → `backend#dev` → `notification-worker#dev` → `ws-gateway#dev` → `frontend#dev`
+
+## Additional Documentation
+
+- [Kafka to BullMQ Migration Guide](./MIGRATION_KAFKA_TO_BULLMQ.md)
+- [Docker Setup Guide](./Docker-README.md)
+
+2. **Build specific app:**
+
    ```bash
    turbo run build --filter=frontend
    ```

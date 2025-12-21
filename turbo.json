@@ -6,7 +6,6 @@
     "DATABASE_URL",
     "TIMESCALE_DATABASE_URL",
     "REDIS_URL",
-    "KAFKA_BROKERS",
     "JWT_SECRET",
     "RESEND_API_KEY",
     "TWILIO_ACCOUNT_SID",
@@ -21,7 +20,32 @@
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", "generated/**"],
       "env": ["NODE_ENV"]
     },
+    "poller#dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "backend#dev": {
+      "dependsOn": ["poller#dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "notification-worker#dev": {
+      "dependsOn": ["backend#dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "ws-gateway#dev": {
+      "dependsOn": ["notification-worker#dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "frontend#dev": {
+      "dependsOn": ["ws-gateway#dev"],
+      "cache": false,
+      "persistent": true
+    },
     "dev": {
+      "dependsOn": ["^dev"],
       "cache": false,
       "persistent": true
     },

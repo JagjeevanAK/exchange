@@ -6,7 +6,7 @@
       "name": "exchange",
       "devDependencies": {
         "prettier": "^3.3.3",
-        "turbo": "^2.1.1",
+        "turbo": "^2.7.1",
         "typescript": "^5.6.3",
       },
     },
