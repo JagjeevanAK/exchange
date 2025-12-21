@@ -1,20 +1,26 @@
-import React from "react";
-import { BTC, ETH, SOL } from "@/components/icons/icons";
+import React from 'react';
+import { BTC, ETH, SOL, XRP } from '@/components/icons/icons';
 
 export const getIcons = (symbol: string): React.ReactElement => {
-    const normalizedSymbol = symbol.toLowerCase();
-    
-    switch (normalizedSymbol) {
-        case 'btc':
-        case 'btcusdt':
-            return React.createElement(BTC);
-        case 'eth':
-        case 'ethusdt':
-            return React.createElement(ETH);
-        case 'sol':
-        case 'solusdt':
-            return React.createElement(SOL);
-        default:
-            return React.createElement(BTC); // Default fallback
-    }
+  const normalizedSymbol = symbol.toLowerCase();
+
+  // Check for BTC pairs
+  if (normalizedSymbol.startsWith('btc')) {
+    return React.createElement(BTC);
+  }
+  // Check for ETH pairs
+  if (normalizedSymbol.startsWith('eth')) {
+    return React.createElement(ETH);
+  }
+  // Check for SOL pairs
+  if (normalizedSymbol.startsWith('sol')) {
+    return React.createElement(SOL);
+  }
+  // Check for XRP pairs
+  if (normalizedSymbol.startsWith('xrp')) {
+    return React.createElement(XRP);
+  }
+
+  // Default fallback
+  return React.createElement(BTC);
 };

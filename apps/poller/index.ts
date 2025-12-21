@@ -3,9 +3,10 @@ import type { stream, Ticker } from './types';
 import { enqueue, consume } from './lib/dbQueue';
 import { pub } from './lib/publisher';
 
-const BINANCE_WS_URL ='wss://stream.binance.com:9443/stream?streams=btcfdusd@trade/ethusdt@trade/usdcusdt@trade/solusdt@trade/btcusdt@trade/ethfdusd@trade/ethusdc@trade/xrpusdc@trade/solfdusd@trade/solusdc@trade';
+const BINANCE_WS_URL =
+  'wss://stream.binance.com:9443/stream?streams=btcfdusd@trade/ethusdt@trade/solusdt@trade/btcusdt@trade/ethfdusd@trade/ethusdc@trade/xrpusdc@trade/solfdusd@trade/solusdc@trade';
 
-const RECONNECT_DELAY_MS = 1000; 
+const RECONNECT_DELAY_MS = 1000;
 const PING_INTERVAL_MS = 3000;
 
 let ws: WebSocket | null = null;
