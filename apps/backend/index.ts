@@ -1,10 +1,11 @@
-import { configDotenv } from "dotenv";
-import express from "express";
-import cors from "cors";
-import session from "express-session";
-import passport from "./lib/passport";
-import router from "./routes";
-import client from "prom-client";
+import { configDotenv } from 'dotenv';
+import express from 'express';
+import cors from 'cors';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
+import passport from './lib/passport';
+import router from './routes';
+import client from 'prom-client';
 
 configDotenv();
 const app = express();
@@ -16,10 +17,7 @@ collectDefaultMetrics({ register: client.register });
 app.use((req, res, next) => {
   const startTime = Date.now();
 
-  const {
-    httpRequestDuration,
-    httpRequestTotal,
-  } = require("./metrics/prometheus");
+  const { httpRequestDuration, httpRequestTotal } = require('./metrics/prometheus');
 
   const originalEnd = res.end.bind(res);
 
@@ -27,7 +25,7 @@ app.use((req, res, next) => {
     const duration = (Date.now() - startTime) / 1000;
     const statusCode = res.statusCode.toString();
     const method = req.method;
-    const route = req.route?.path || req.path || "unknown";
+    const route = req.route?.path || req.path || 'unknown';
 
     httpRequestDuration.labels(method, route, statusCode).observe(duration);
 
@@ -39,9 +37,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/metrics", async (req, res) => {
+app.get('/metrics', async (req, res) => {
   try {
-    res.setHeader("Content-Type", client.register.contentType);
+    res.setHeader('Content-Type', client.register.contentType);
     const metrics = await client.register.metrics();
     res.send(metrics);
   } catch (ex) {
@@ -49,22 +47,22 @@ app.get("/metrics", async (req, res) => {
   }
 });
 
-app.get("/health", (req, res) => {
+app.get('/health', (req, res) => {
   res.json({
-    status: "healthy",
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.npm_package_version || "1.0.0",
+    version: process.env.npm_package_version || '1.0.0',
   });
 });
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "your-session-secret",
+    secret: process.env.SESSION_SECRET || 'your-session-secret',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000,
     },
   })
@@ -73,21 +71,21 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use(cookieParser());
+
 app.use(
   cors({
     origin:
-      process.env.NODE_ENV === "production"
-        ? process.env.FRONTEND_URL
-        : "http://localhost:3002",
+      process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : 'http://localhost:3000',
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
 app.use(express.json());
 
-app.use("/api/v1/", router);
+app.use('/api/v1/', router);
 
 app.listen(PORT, () => {
   console.log(`server is running at http://localhost:${PORT}/`);

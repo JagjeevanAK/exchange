@@ -1,10 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-
-interface WebSocketMessage {
-  op: string;
-  symbols?: string[];
-  [key: string]: unknown;
-}
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { getWebSocketManager } from '@/lib/websocket-manager';
 
 interface MarketData {
   symbol: string;
@@ -22,190 +17,108 @@ interface UseWebSocketReturn {
 }
 
 export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn => {
-  const wsRef = useRef<WebSocket | null>(null);
   const [marketData, setMarketData] = useState<Map<string, MarketData>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-  const subscribedSymbols = useRef<Set<string>>(new Set());
+  const initialSymbolsRef = useRef(initialSymbols);
 
-  const connect = useCallback(() => {
-    try {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080';
-      console.log('Attempting to connect to WebSocket:', wsUrl);
-      wsRef.current = new WebSocket(wsUrl);
+  useEffect(() => {
+    const manager = getWebSocketManager();
 
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connected successfully');
-        setIsConnected(true);
-        setError(null);
-        reconnectAttempts.current = 0;
+    // Connect to WebSocket
+    manager.connect();
 
-        // Resubscribe to previous symbols
-        if (subscribedSymbols.current.size > 0) {
-          const message: WebSocketMessage = {
-            op: 'subscribe',
-            symbols: Array.from(subscribedSymbols.current)
-          };
-          wsRef.current?.send(JSON.stringify(message));
-        }
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.op === 'subscribed' || data.op === 'unsubscribed') {
-            console.log(`WebSocket ${data.op}:`, data.symbols);
-            return;
-          }
-
-          // Handle market data updates - this could be from Binance trade data
-          // Format from backend: { s: "BTCUSDT", p: "43000.50", T: Date, E: Date, t: "123", q: "0.001" }
-          if (data.s && data.p) {
-            const symbol = data.s;
-            const price = parseFloat(data.p);
-            const timestamp = data.T ? new Date(data.T).getTime() : Date.now();
-            
-            if (symbol && price > 0) {
-              console.log('WebSocket: Received trade data:', { symbol, price, timestamp });
-              
-              setMarketData(prev => {
-                const newMap = new Map(prev);
-                
-                // For trade data, use the trade price as both bid and ask with small spread
-                const spread = price * 0.0001; // 0.01% spread
-                const bid = price - spread;
-                const ask = price + spread;
-                
-                newMap.set(symbol, {
-                  symbol,
-                  bid,
-                  ask,
-                  timestamp
-                });
-                
-                return newMap;
-              });
-            }
-          }
-          // Legacy format support
-          else if (data.symbol || data.price) {
-            const symbol = data.symbol;
-            const price = parseFloat(data.price || 0);
-            
-            if (symbol && price > 0) {
-              setMarketData(prev => {
-                const newMap = new Map(prev);
-                
-                // For trade data, use the trade price as both bid and ask with small spread
-                const spread = price * 0.0001; // 0.01% spread
-                const bid = price - spread;
-                const ask = price + spread;
-                
-                newMap.set(symbol, {
-                  symbol,
-                  bid,
-                  ask,
-                  timestamp: Date.now()
-                });
-                
-                return newMap;
-              });
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing WebSocket message:', err);
-        }
-      };
-
-      wsRef.current.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        setIsConnected(false);
-        
-        // Attempt to reconnect if not a normal closure
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const timeout = Math.pow(2, reconnectAttempts.current) * 1000; // Exponential backoff
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttempts.current++;
-            connect();
-          }, timeout);
-        }
-      };
-
-      wsRef.current.onerror = (event) => {
-        console.error('WebSocket error:', {
-          type: event.type,
-          target: event.target,
-          readyState: wsRef.current?.readyState,
-          url: wsRef.current?.url,
-          error: event
-        });
-        setError('WebSocket connection error');
-      };
-
-    } catch (err) {
-      console.error('Failed to connect WebSocket:', err);
-      setError('Failed to establish WebSocket connection');
+    // Subscribe to initial symbols
+    if (initialSymbolsRef.current.length > 0) {
+      manager.subscribe(initialSymbolsRef.current);
     }
+
+    // Set up handlers
+    const unsubMessage = manager.onMessage((data: unknown) => {
+      // Handle subscription confirmations
+      if (typeof data === 'object' && data !== null) {
+        const msg = data as Record<string, unknown>;
+
+        if (msg.op === 'subscribed' || msg.op === 'unsubscribed') {
+          console.log(`WebSocket: ${msg.op}:`, msg.symbols);
+          return;
+        }
+
+        // Handle array response (subscription list from server)
+        if (Array.isArray(data)) {
+          console.log('WebSocket: Subscription confirmed:', data);
+          return;
+        }
+
+        // Handle market data
+        // Format: { s: "BTCUSDT", p: "43000.50", T: Date, E: Date, t: "123", q: "0.001" }
+        if (msg.s && msg.p) {
+          const symbol = msg.s as string;
+          const price = parseFloat(msg.p as string);
+          const timestamp = msg.T ? new Date(msg.T as string).getTime() : Date.now();
+
+          if (symbol && price > 0) {
+            setMarketData((prev) => {
+              const newMap = new Map(prev);
+              const spread = price * 0.0001;
+
+              newMap.set(symbol, {
+                symbol,
+                bid: price - spread,
+                ask: price + spread,
+                timestamp,
+              });
+
+              return newMap;
+            });
+          }
+        }
+      }
+    });
+
+    const unsubConnect = manager.onConnect(() => {
+      console.log('WebSocket: Connected');
+      setIsConnected(true);
+      setError(null);
+    });
+
+    const unsubDisconnect = manager.onDisconnect(() => {
+      console.log('WebSocket: Disconnected');
+      setIsConnected(false);
+    });
+
+    const unsubError = manager.onError((err) => {
+      console.error('WebSocket: Error', err);
+      setError(err);
+    });
+
+    // Check initial connection state
+    setIsConnected(manager.isConnected());
+
+    return () => {
+      unsubMessage();
+      unsubConnect();
+      unsubDisconnect();
+      unsubError();
+      // Don't disconnect on unmount - let the singleton manage the connection
+    };
   }, []);
 
   const subscribe = useCallback((symbols: string[]) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.warn('WebSocket not connected, queuing subscription');
-      symbols.forEach(symbol => subscribedSymbols.current.add(symbol));
-      return;
-    }
-
-    const message: WebSocketMessage = {
-      op: 'subscribe',
-      symbols: symbols
-    };
-
-    wsRef.current.send(JSON.stringify(message));
-    symbols.forEach(symbol => subscribedSymbols.current.add(symbol));
+    const manager = getWebSocketManager();
+    manager.subscribe(symbols);
   }, []);
 
   const unsubscribe = useCallback((symbols: string[]) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      symbols.forEach(symbol => subscribedSymbols.current.delete(symbol));
-      return;
-    }
-
-    const message: WebSocketMessage = {
-      op: 'unsubscribe',
-      symbols: symbols
-    };
-
-    wsRef.current.send(JSON.stringify(message));
-    symbols.forEach(symbol => subscribedSymbols.current.delete(symbol));
+    const manager = getWebSocketManager();
+    manager.unsubscribe(symbols);
   }, []);
-
-  useEffect(() => {
-    connect();
-
-    // Subscribe to initial symbols if provided
-    if (initialSymbols.length > 0) {
-      initialSymbols.forEach(symbol => subscribedSymbols.current.add(symbol));
-    }
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close(1000);
-      }
-    };
-  }, [connect, initialSymbols]);
 
   return {
     marketData,
     isConnected,
     error,
     subscribe,
-    unsubscribe
+    unsubscribe,
   };
 };

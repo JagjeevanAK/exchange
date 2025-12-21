@@ -1,243 +1,229 @@
-import axios from "axios";
+import axios from 'axios';
 
 // Backend server configuration
-const endpoint = "http://localhost:3001";
+const endpoint = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Create axios instance with default configuration
 const apiClient = axios.create({
-    baseURL: endpoint,
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    withCredentials: true, // For CORS credentials
+  baseURL: endpoint,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Important: This sends cookies with requests
 });
 
-// Request interceptor to add auth token
-apiClient.interceptors.request.use((config) => {
-    const token = getAuthToken();
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+// Flag to prevent multiple refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
     }
-    return config;
-});
+  });
+  failedQueue = [];
+};
 
-// Response interceptor for error handling
+// Response interceptor for handling token refresh
 apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid, redirect to login
-            removeAuthToken();
-            if (typeof window !== 'undefined') {
-                window.location.href = '/signin';
-            }
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401/403 and we haven't tried refreshing yet
+    if (
+      (error.response?.status === 401 || error.response?.status === 403) &&
+      !originalRequest._retry
+    ) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => apiClient(originalRequest));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh the token
+        await apiClient.post('/api/v1/user/refresh');
+        processQueue();
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError);
+        // Refresh failed, redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/signin';
         }
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
+    return Promise.reject(error);
+  }
 );
 
-const getAuthToken = (): string | null => {
-    if (typeof window !== 'undefined') {
-        return localStorage.getItem('token');
-    }
-    return null;
-};
-
-const setAuthToken = (token: string): void => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('token', token);
-    }
-};
-
-const removeAuthToken = (): void => {
-    if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-    }
-};
-
-// Helper to check if JWT token is expired
-const isTokenExpired = (token: string): boolean => {
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const currentTime = Math.floor(Date.now() / 1000);
-        return payload.exp < currentTime;
-    } catch {
-        return true; // Consider invalid tokens as expired
-    }
-};
-
-// Helper function to handle authentication errors consistently
-const handleAuthError = (errorMessage: string | undefined): Error => {
-    if (errorMessage === "Invalid token" || 
-        errorMessage === "No token in header" || 
-        errorMessage === "No authorization in header") {
-        removeAuthToken();
-        return new Error("Session expired. Please sign in again.");
-    }
-    return new Error(errorMessage || "Request failed");
-};
-
-// Helper function to check if user needs authentication
-const requireAuth = (): void => {
-    const token = getAuthToken();
-    if (!token) {
-        throw new Error("Authentication required. Please sign in to continue.");
-    }
-};
-
 export const api = {
-    signin: async (email: string, password: string) => {
-        try {
-            const res = await apiClient.post('/api/v1/user/signin', {
-                email,
-                password
-            });
+  signin: async (email: string, password: string) => {
+    try {
+      const res = await apiClient.post('/api/v1/user/signin', {
+        email,
+        password,
+      });
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Signin failed');
+    }
+  },
 
-            // Store token if signin is successful
-            if (res.data.token) {
-                setAuthToken(res.data.token);
-            }
+  // Google Sign-in - redirects to backend OAuth endpoint
+  signinWithGoogle: () => {
+    const googleAuthUrl = `${endpoint}/api/v1/auth/google`;
+    window.location.href = googleAuthUrl;
+  },
 
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Signin failed");
-        }
-    },
+  signup: async (email: string, password: string) => {
+    try {
+      const res = await apiClient.post('/api/v1/user/signup', {
+        email,
+        password,
+      });
+      return res.data;
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { message?: string } } };
+      throw new Error(error.response?.data?.message || 'Signup failed');
+    }
+  },
 
-    // Google Sign-in - redirects to backend OAuth endpoint
-    signinWithGoogle: () => {
-        const googleAuthUrl = `${endpoint}/api/v1/auth/google`;
-        window.location.href = googleAuthUrl;
-    },
+  logout: async () => {
+    try {
+      await apiClient.post('/api/v1/user/logout');
+      return { message: 'Logged out successfully' };
+    } catch {
+      // Even if logout fails on server, consider it successful on client
+      return { message: 'Logged out successfully' };
+    }
+  },
 
-    signup: async (email: string, password: string) => {
-        try {
-            const res = await apiClient.post('/api/v1/user/signup', {
-                email,
-                password
-            });
+  // Check if user is authenticated (uses cookie)
+  checkAuth: async () => {
+    try {
+      const res = await apiClient.get('/api/v1/user/me');
+      return res.data;
+    } catch {
+      return { authenticated: false, user: null };
+    }
+  },
 
-            return res.data;
-        } catch (e: unknown) {
-            const error = e as { response?: { data?: { message?: string } } };
-            throw new Error(error.response?.data?.message || "Signup failed");
-        }
-    },
+  // Refresh token
+  refreshToken: async () => {
+    try {
+      const res = await apiClient.post('/api/v1/user/refresh');
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Token refresh failed');
+    }
+  },
 
-    logout: async () => {
-        removeAuthToken();
-        return { message: "Logged out successfully" };
-    },
+  balance: async () => {
+    try {
+      const res = await apiClient.get('/api/v1/user/balance');
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch balance');
+    }
+  },
 
-    balance: async () => {
-        try {
-            const res = await apiClient.get('/api/v1/user/balance');
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Failed to fetch balance");
-        }
-    },
+  // Asset-related APIs
+  getAssets: async () => {
+    try {
+      const res = await apiClient.get('/api/v1/assets');
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch assets');
+    }
+  },
 
-    // Asset-related APIs
-    getAssets: async () => {
-        try {
-            const res = await apiClient.get('/api/v1/assets');
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Failed to fetch assets");
-        }
-    },
+  // Candles/Chart data APIs
+  getCandles: async (asset: string, timeframe: string, startTime?: number, endTime?: number) => {
+    try {
+      // Default to last 24 hours if no time range provided
+      const now = Math.floor(Date.now() / 1000);
+      const defaultStartTime = now - 24 * 60 * 60; // 24 hours ago
 
-    // Candles/Chart data APIs
-    getCandles: async (asset: string, timeframe: string, startTime?: number, endTime?: number) => {
-        try {
-            // Check if user is authenticated before making the request
-            // requireAuth();
+      const params = new URLSearchParams({
+        asset: asset,
+        ts: timeframe,
+        startTime: (startTime || defaultStartTime).toString(),
+        endTime: (endTime || now).toString(),
+      });
 
-            // Default to last 24 hours if no time range provided
-            const now = Math.floor(Date.now() / 1000);
-            const defaultStartTime = now - (24 * 60 * 60); // 24 hours ago
-            
-            const params = new URLSearchParams({
-                asset: asset, // Keep the full symbol like BTCUSDT
-                ts: timeframe,
-                startTime: (startTime || defaultStartTime).toString(),
-                endTime: (endTime || now).toString()
-            });
-            
-            const res = await apiClient.get(`/api/v1/candles?${params}`);
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw handleAuthError(axiosError.response?.data?.message);
-        }
-    },
+      const res = await apiClient.get(`/api/v1/candles?${params}`);
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch candles');
+    }
+  },
 
-    // Get latest candle for real-time updates
-    getLatestCandle: async (asset: string, timeframe: string = '1m') => {
-        try {
-            // Check if user is authenticated before making the request
-            requireAuth();
+  // Get latest candle for real-time updates
+  getLatestCandle: async (asset: string, timeframe: string = '1m') => {
+    try {
+      const params = new URLSearchParams({
+        asset: asset,
+        ts: timeframe,
+      });
 
-            const params = new URLSearchParams({
-                asset: asset, // Keep the full symbol like BTCUSDT
-                ts: timeframe
-            });
-            
-            const res = await apiClient.get(`/api/v1/candles/latest?${params}`);
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw handleAuthError(axiosError.response?.data?.message);
-        }
-    },
+      const res = await apiClient.get(`/api/v1/candles/latest?${params}`);
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch latest candle');
+    }
+  },
 
-    // Trading APIs
-    placeTrade: async (tradeData: any) => {
-        try {
-            const res = await apiClient.post('/api/v1/trade', tradeData);
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Failed to place trade");
-        }
-    },
+  // Trading APIs
+  placeTrade: async (tradeData: unknown) => {
+    try {
+      const res = await apiClient.post('/api/v1/trade', tradeData);
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to place trade');
+    }
+  },
 
-    getOpenTrades: async () => {
-        try {
-            const res = await apiClient.get('/api/v1/trades/open');
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Failed to fetch open trades");
-        }
-    },
+  getOpenTrades: async () => {
+    try {
+      const res = await apiClient.get('/api/v1/trades/open');
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch open trades');
+    }
+  },
 
-    getClosedTrades: async () => {
-        try {
-            const res = await apiClient.get('/api/v1/trades');
-            return res.data;
-        } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { message?: string } } };
-            throw new Error(axiosError.response?.data?.message || "Failed to fetch closed trades");
-        }
-    },
-
-    // Utility functions for token management
-    getToken: getAuthToken,
-    isAuthenticated: () => !!getAuthToken(),
-    
-    // Debug helper to check auth status
-    checkAuthStatus: () => {
-        const token = getAuthToken();
-        return {
-            hasToken: !!token,
-            token: token ? token.substring(0, 20) + '...' : null, // Only show first 20 chars for security
-            isExpired: token ? isTokenExpired(token) : null
-        };
-    },
+  getClosedTrades: async () => {
+    try {
+      const res = await apiClient.get('/api/v1/trades');
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch closed trades');
+    }
+  },
 };

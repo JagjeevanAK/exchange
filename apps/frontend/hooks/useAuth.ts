@@ -1,58 +1,73 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+
+interface User {
+  id: string;
+  email: string;
+}
 
 export const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [user, setUser] = useState<{ email?: string } | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Check authentication status on mount
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const result = await api.checkAuth();
+      if (result.authenticated && result.user) {
+        setIsAuthenticated(true);
+        setUser(result.user);
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+    } catch {
+      setIsAuthenticated(false);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = api.getToken()
-      if (token) {
-        setIsAuthenticated(true)
-        // You could decode the JWT here to get user info
-        // For now, we'll just set a basic user object
-        setUser({ email: 'user@example.com' })
-      } else {
-        setIsAuthenticated(false)
-        setUser(null)
-      }
-      setIsLoading(false)
-    }
-
-    checkAuth()
-  }, [])
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   const login = async (email: string, password: string) => {
     try {
-      const result = await api.signin(email, password)
-      setIsAuthenticated(true)
-      setUser({ email })
-      return result
+      const result = await api.signin(email, password);
+      if (result.user) {
+        setIsAuthenticated(true);
+        setUser(result.user);
+      }
+      return result;
     } catch (error) {
-      setIsAuthenticated(false)
-      setUser(null)
-      throw error
+      setIsAuthenticated(false);
+      setUser(null);
+      throw error;
     }
-  }
+  };
 
   const logout = async () => {
-    await api.logout()
-    setIsAuthenticated(false)
-    setUser(null)
-  }
+    try {
+      await api.logout();
+    } finally {
+      setIsAuthenticated(false);
+      setUser(null);
+    }
+  };
 
   const signup = async (email: string, password: string) => {
     try {
-      const result = await api.signup(email, password)
-      return result
+      const result = await api.signup(email, password);
+      return result;
     } catch (error) {
-      throw error
+      throw error;
     }
-  }
+  };
 
   return {
     isAuthenticated,
@@ -60,6 +75,7 @@ export const useAuth = () => {
     user,
     login,
     logout,
-    signup
-  }
-}
+    signup,
+    checkAuthStatus,
+  };
+};
