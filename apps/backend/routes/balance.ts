@@ -24,7 +24,6 @@ router.get('/balance', async (req, res) => {
             });
         }
 
-        // Parse the JSON balance field
         const balance = typeof user.balance === 'string' ? JSON.parse(user.balance) : user.balance;
 
         res.status(200).json({

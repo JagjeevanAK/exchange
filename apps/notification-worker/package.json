@@ -16,7 +16,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "kafkajs": "^2.2.4",
+    "bullmq": "^5.28.2",
+    "ioredis": "^5.4.1",
     "resend": "^6.0.2",
     "twilio": "^5.8.2"
   }

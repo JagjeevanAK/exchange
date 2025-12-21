@@ -1,94 +1,109 @@
-import { Kafka } from "kafkajs";
-import { Resend } from "resend";
-import twilio from "twilio";
-import { smsTemplete } from "./templetes/smsTemplete";
-import { emailTemplate } from "./templetes/emailTemplete";
+import { Worker, type Job } from 'bullmq';
+import Redis from 'ioredis';
+import { Resend } from 'resend';
+import twilio from 'twilio';
+import { smsTemplete } from './templetes/smsTemplete';
+import { emailTemplate } from './templetes/emailTemplete';
 
-// Use environment variables for configuration
-const kafkaBrokers = process.env.KAFKA_BROKERS?.split(',') || ['kafka:29092'];
-
-const kafka = new Kafka({
-    clientId: 'exchange-notification-worker',
-    brokers: kafkaBrokers
-});
-
-const consumer = kafka.consumer({
-    groupId:"email-worker"
+const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
 });
 
 const resend = new Resend(process.env.RESEND_API_KEY as string);
 
-// Only initialize Twilio if credentials are provided
 let client: any = null;
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && 
-    process.env.TWILIO_ACCOUNT_SID !== 'your-twilio-sid' && 
-    process.env.TWILIO_AUTH_TOKEN !== 'your-twilio-token') {
-    client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+if (
+  process.env.TWILIO_ACCOUNT_SID &&
+  process.env.TWILIO_AUTH_TOKEN &&
+  process.env.TWILIO_ACCOUNT_SID !== 'your-twilio-sid' &&
+  process.env.TWILIO_AUTH_TOKEN !== 'your-twilio-token'
+) {
+  client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 } else {
-    console.warn('Twilio credentials not configured. SMS notifications will be disabled.');
+  console.warn('Twilio credentials not configured. SMS notifications will be disabled.');
 }
 
-const mailConsumer = async () => {
+interface NotificationJobData {
+  to: string;
+  asset: string;
+  amount: number;
+  quantity: number;
+  order: string;
+}
+
+const notificationWorker = new Worker<NotificationJobData>(
+  'notifications',
+  async (job: Job<NotificationJobData>) => {
     try {
-        console.log(`Connecting to Kafka brokers: ${kafkaBrokers.join(', ')}`);
-        await consumer.connect();
-        console.log('Successfully connected to Kafka');
+      const { to, asset, amount, quantity, order } = job.data;
 
-        console.log('Subscribing to email topic...');
-        consumer.subscribe({
-            topic: "email",
-            fromBeginning: true
+      console.log(`Processing notification job ${job.id} for order ${order}`);
+
+      const { subject, text, html } = emailTemplate(asset, amount, quantity, order);
+
+      await resend.emails.send({
+        from: 'noreply@yourdomain.com',
+        to,
+        subject,
+        html,
+        text,
+      });
+
+      console.log(`Email sent successfully to ${to}`);
+
+      if (client) {
+        const body = smsTemplete(asset, amount, quantity, order);
+        await client.messages.create({
+          body,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to,
         });
+        console.log(`SMS sent successfully to ${to}`);
+      } else {
+        console.log('SMS not sent - Twilio not configured');
+      }
 
-        console.log('Starting message consumption...');
-        await consumer.run({
-            eachMessage: async ({ message }) => {
-                try{
-                    if(!message.value) return;
-
-                const payload = JSON.parse(message.value.toString());
-                const { 
-                    to, 
-                    asset, 
-                    amount,
-                    quantity,
-                    order
-                } = payload;
-
-                const { subject, text, html } = emailTemplate(asset, amount, quantity, order);
-
-                await resend.emails.send({
-                    from: "noreply@yourdomain.com",
-                    to,
-                    subject,
-                    html,
-                    text
-                });
-
-                // Send SMS only if Twilio client is configured
-                if (client) {
-                    const body = smsTemplete(asset, amount, quantity, order);
-                    await client.messages.create({
-                        body,
-                        from: process.env.TWILIO_PHONE_NUMBER,
-                        to,
-                    });
-                } else {
-                    console.log('SMS not sent - Twilio not configured');
-                }
-            } catch(e){
-                console.error("Error while sending Email and SMS ", e);
-            }
-        }
-    });
+      return { success: true };
     } catch (error) {
-        console.error('Error in mailConsumer:', error);
-        // Retry connection after 5 seconds
-        setTimeout(() => {
-            console.log('Retrying Kafka connection...');
-            mailConsumer();
-        }, 5000);
+      console.error('Error while sending Email and SMS:', error);
+      throw error; 
     }
-}
+  },
+  {
+    connection: redisConnection,
+    concurrency: 5,
+    limiter: {
+      max: 10,
+      duration: 1000,
+    },
+  }
+);
 
-mailConsumer();
+// Event listeners for worker
+notificationWorker.on('completed', (job) => {
+  console.log(`Job ${job.id} completed successfully`);
+});
+
+notificationWorker.on('failed', (job, err) => {
+  console.error(`Job ${job?.id} failed:`, err);
+});
+
+notificationWorker.on('error', (err) => {
+  console.error('Worker error:', err);
+});
+
+console.log('Notification worker started and waiting for jobs...');
+
+process.on('SIGINT', async () => {
+  console.log('Shutting down notification worker...');
+  await notificationWorker.close();
+  await redisConnection.quit();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Shutting down notification worker...');
+  await notificationWorker.close();
+  await redisConnection.quit();
+  process.exit(0);
+});

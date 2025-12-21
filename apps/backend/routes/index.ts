@@ -14,8 +14,6 @@ const router = Router();
 
 // Auth routes (including Google OAuth)
 router.use('/auth', auth);
-
-// User routes
 router.use('/user', signup);
 router.use('/user', signin);
 router.use('/user', middlewares.auth, balance);
