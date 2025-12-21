@@ -6,6 +6,54 @@ import { CandlestickSeries, Chart, TimeScale } from 'lightweight-charts-react-co
 import { ColorType } from 'lightweight-charts';
 import { useChartData } from '@/hooks/useChartData';
 import { useTradingContext } from './TradingContext';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function ChartSkeleton() {
+  // Fixed heights to avoid hydration mismatch (no Math.random())
+  const barHeights = [
+    45, 65, 35, 70, 50, 60, 40, 75, 55, 30, 68, 42, 58, 48, 72, 38, 62, 52, 44, 66, 36, 54, 46, 70,
+    32, 64, 50, 56, 42, 60,
+  ];
+
+  return (
+    <div className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded p-4">
+      <div className="flex flex-col h-full">
+        {/* Chart header skeleton */}
+        <div className="flex justify-between items-center mb-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        {/* Chart area skeleton */}
+        <div className="flex-1 flex gap-2">
+          {/* Y-axis */}
+          <div className="flex flex-col justify-between py-4">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          {/* Candlestick area */}
+          <div className="flex-1 flex items-end gap-1 pb-8">
+            {barHeights.map((height, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                <Skeleton className="w-full" style={{ height: `${height}%` }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* X-axis skeleton */}
+        <div className="flex justify-between pt-2">
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+          <Skeleton className="h-3 w-12" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MainChart() {
   const { selectedSymbol, timeInterval } = useTradingContext();
@@ -109,17 +157,7 @@ export default function MainChart() {
   );
 
   if (loading) {
-    return (
-      <div
-        ref={chartContainerRef}
-        className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded"
-      >
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-muted-foreground mb-2">Loading chart data for {selectedSymbol}...</p>
-          <p className="text-sm text-muted-foreground">{timeInterval} timeframe</p>
-        </div>
-      </div>
-    );
+    return <ChartSkeleton />;
   }
 
   if (error) {

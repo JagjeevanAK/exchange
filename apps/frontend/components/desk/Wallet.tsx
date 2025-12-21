@@ -1,81 +1,97 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+function WalletSkeleton() {
+  return (
+    <div className="flex gap-2 w-full">
+      <Skeleton className="flex-1 h-10" />
+      <Skeleton className="h-10 w-20" />
+    </div>
+  );
+}
 
 export default function WalletMenu() {
-    const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-    return (
-        <div className="flex gap-2 w-full">
-            {/* Wallet Balance Dropdown */}
-            <DropdownMenu open={open} onOpenChange={setOpen}>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="outline"
-                        className="flex-1 items-center gap-2 text-lg font-semibold rounded-md"
-                    >
-                        9,999.54 USD
-                        {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </Button>
-                </DropdownMenuTrigger>
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-                <DropdownMenuContent className="flex-1 w-80 p-3 rounded-xl shadow-lg">
+  if (!isMounted) {
+    return <WalletSkeleton />;
+  }
 
-                    {/* Wallet Info */}
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                            <span>Balance</span>
-                            <span className="font-medium">9,999.54 USD</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Equity</span>
-                            <span className="font-medium">9,999.54 USD</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Margin</span>
-                            <span className="font-medium">0.00 USD</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Free margin</span>
-                            <span className="font-medium">9,999.54 USD</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Margin level</span>
-                            <span className="font-medium">-</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span>Account leverage</span>
-                            <span className="font-medium">1:200</span>
-                        </div>
-                    </div>
+  return (
+    <div className="flex gap-2 w-full">
+      {/* Wallet Balance Dropdown */}
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className="flex-1 items-center gap-2 text-lg font-semibold rounded-md"
+          >
+            9,999.54 USD
+            {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </Button>
+        </DropdownMenuTrigger>
 
-                    <DropdownMenuSeparator />
+        <DropdownMenuContent className="flex-1 w-80 p-3 rounded-xl shadow-lg">
+          {/* Wallet Info */}
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Balance</span>
+              <span className="font-medium">9,999.54 USD</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Equity</span>
+              <span className="font-medium">9,999.54 USD</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Margin</span>
+              <span className="font-medium">0.00 USD</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Free margin</span>
+              <span className="font-medium">9,999.54 USD</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Margin level</span>
+              <span className="font-medium">-</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Account leverage</span>
+              <span className="font-medium">1:200</span>
+            </div>
+          </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2 mt-2">
-                        <Button className="w-full">Top Up</Button>
-                        <Button variant="outline" className="w-full">
-                            Manage Accounts
-                        </Button>
-                        <Button variant="outline" className="w-full">
-                            Download Trading Log
-                        </Button>
-                    </div>
-                </DropdownMenuContent>
-            </DropdownMenu>
+          <DropdownMenuSeparator />
 
-            {/* Deposit Button */}
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Deposit
+          {/* Actions */}
+          <div className="flex flex-col gap-2 mt-2">
+            <Button className="w-full">Top Up</Button>
+            <Button variant="outline" className="w-full">
+              Manage Accounts
             </Button>
-        </div>
-    )
+            <Button variant="outline" className="w-full">
+              Download Trading Log
+            </Button>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Deposit Button */}
+      <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Deposit</Button>
+    </div>
+  );
 }

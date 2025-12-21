@@ -1,14 +1,15 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Minus, Plus } from "lucide-react";
-import { useNumberInput } from "@/hooks/useNumberInput";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Minus, Plus } from 'lucide-react';
+import { useNumberInput } from '@/hooks/useNumberInput';
 
-type OrderSide = "buy" | "sell";
-type OrderType = "market" | "limit";
+type OrderSide = 'buy' | 'sell';
+type OrderType = 'market' | 'limit';
 
 interface OrderDetails {
   side: OrderSide;
@@ -22,11 +23,70 @@ interface OrderDetails {
   enableTakeProfitStopLoss: boolean;
 }
 
+function OrderBookSkeleton() {
+  return (
+    <div className="w-full h-full px-4 pb-2">
+      <Card className="p-4 space-y-3 h-full flex flex-col">
+        {/* Tabs skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="flex w-full max-w-md gap-0">
+            <Skeleton className="flex-1 h-12 rounded-l-md" />
+            <Skeleton className="flex-1 h-12 rounded-r-md" />
+          </div>
+        </div>
+
+        {/* Market/Limit buttons skeleton */}
+        <div className="flex gap-2">
+          <Skeleton className="flex-1 h-10" />
+          <Skeleton className="flex-1 h-10" />
+        </div>
+
+        {/* Amount input skeleton */}
+        <Skeleton className="h-16 rounded-lg" />
+
+        {/* Leverage section skeleton */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+          <Skeleton className="h-4 w-full" />
+          <div className="flex justify-between">
+            <Skeleton className="h-3 w-8" />
+            <Skeleton className="h-3 w-8" />
+            <Skeleton className="h-3 w-8" />
+            <Skeleton className="h-3 w-8" />
+            <Skeleton className="h-3 w-8" />
+            <Skeleton className="h-3 w-8" />
+          </div>
+        </div>
+
+        {/* Take profit/Stop loss checkbox skeleton */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-36" />
+        </div>
+
+        {/* Place order button skeleton */}
+        <div className="flex-1 flex items-end">
+          <Skeleton className="w-full h-12" />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function OrderBook() {
-  const [activeTab, setActiveTab] = useState<OrderSide>("buy");
-  const [orderType, setOrderType] = useState<OrderType>("market");
+  const [activeTab, setActiveTab] = useState<OrderSide>('buy');
+  const [orderType, setOrderType] = useState<OrderType>('market');
   const [leverage, setLeverage] = useState<number>(13.2);
   const [enableTakeProfitStopLoss, setEnableTakeProfitStopLoss] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Use number input hooks for formatted inputs
   const amountInput = useNumberInput({ initialValue: '', decimals: 2 });
@@ -55,7 +115,7 @@ export default function OrderBook() {
       stopLossAmount: stopLossAmountInput.rawValue,
       enableTakeProfitStopLoss,
     };
-    console.log("Placing order:", orderDetails);
+    console.log('Placing order:', orderDetails);
     // Reset form
     amountInput.reset();
     takeProfitPriceInput.reset();
@@ -63,6 +123,10 @@ export default function OrderBook() {
     takeProfitGainInput.reset();
     stopLossAmountInput.reset();
   };
+
+  if (!isMounted) {
+    return <OrderBookSkeleton />;
+  }
 
   return (
     <div className="w-full h-full px-4 pb-2">
@@ -73,23 +137,23 @@ export default function OrderBook() {
           <div className="flex w-full max-w-md">
             {/* Long/Buy Tab */}
             <button
-              onClick={() => handleTabClick("buy")}
+              onClick={() => handleTabClick('buy')}
               className={`flex-1 py-3 px-4 text-sm font-bold transition-all duration-200  ${
-                activeTab === "buy"
-                  ? "bg-green-600 text-white"
-                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                activeTab === 'buy'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
               } rounded-l-md border-r border-border/50`}
             >
               Long/Buy
             </button>
-            
+
             {/* Short/Sell Tab */}
             <button
-              onClick={() => handleTabClick("sell")}
+              onClick={() => handleTabClick('sell')}
               className={`flex-1 py-3 px-4 text-sm font-bold transition-all duration-200 ${
-                activeTab === "sell"
-                  ? "bg-red-600 text-white"
-                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                activeTab === 'sell'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
               } rounded-r-md`}
             >
               Short/Sell
@@ -100,16 +164,16 @@ export default function OrderBook() {
         {/* Market/Limit Toggle and Amount */}
         <div className="flex gap-2">
           <Button
-            onClick={() => setOrderType("market")}
-            variant={orderType === "market" ? "default" : "outline"}
+            onClick={() => setOrderType('market')}
+            variant={orderType === 'market' ? 'default' : 'outline'}
             size="sm"
             className="flex-1 h-10 font-bold"
           >
             Market
           </Button>
           <Button
-            onClick={() => setOrderType("limit")}
-            variant={orderType === "limit" ? "default" : "outline"}
+            onClick={() => setOrderType('limit')}
+            variant={orderType === 'limit' ? 'default' : 'outline'}
             size="sm"
             className="flex-1 h-10 font-bold"
           >
@@ -119,9 +183,7 @@ export default function OrderBook() {
 
         {/* WBTC Section */}
         <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            {/* Work to do here */}
-          </div>
+          <div className="flex items-center justify-between">{/* Work to do here */}</div>
           <div className="text-right">
             <input
               type="text"
@@ -154,7 +216,7 @@ export default function OrderBook() {
               <Plus className="h-4 w-4" />
             </Button>
           </div>
-          
+
           <div className="relative">
             {/* Slider */}
             <input
@@ -166,7 +228,7 @@ export default function OrderBook() {
               onChange={(e) => setLeverage(parseFloat(e.target.value))}
               className="w-full slider-themed"
             />
-            
+
             {/* Labels */}
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>1.1x</span>
@@ -196,7 +258,7 @@ export default function OrderBook() {
 
           {enableTakeProfitStopLoss && (
             <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground block h-4">TP Price</label>
                   <Input
@@ -208,9 +270,7 @@ export default function OrderBook() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground block h-4">
-                    % Gain $
-                  </label>
+                  <label className="text-xs text-muted-foreground block h-4">% Gain $</label>
                   <Input
                     type="text"
                     placeholder="0"
@@ -220,7 +280,7 @@ export default function OrderBook() {
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground block h-4">SL Price</label>
@@ -233,9 +293,7 @@ export default function OrderBook() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground block h-4">
-                    % Loss $
-                  </label>
+                  <label className="text-xs text-muted-foreground block h-4">% Loss $</label>
                   <Input
                     type="text"
                     placeholder="0"
@@ -255,12 +313,12 @@ export default function OrderBook() {
             onClick={handlePlaceOrder}
             disabled={!amountInput.displayValue || amountInput.numericValue <= 0}
             className={`w-full h-12 text-lg font-semibold ${
-              activeTab === "buy"
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-red-600 hover:bg-red-700"
+              activeTab === 'buy'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-red-600 hover:bg-red-700'
             } text-white`}
           >
-            {activeTab === "buy" ? "Long/Buy" : "Short/Sell"}
+            {activeTab === 'buy' ? 'Long/Buy' : 'Short/Sell'}
           </Button>
         </div>
       </Card>
@@ -269,24 +327,24 @@ export default function OrderBook() {
         .slider-themed {
           accent-color: #000000; /* Black for light theme */
         }
-        
+
         .dark .slider-themed {
           accent-color: #ffffff; /* White for dark theme */
         }
 
         /* Remove spinner buttons from ALL number inputs */
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
+        input[type='number']::-webkit-inner-spin-button,
+        input[type='number']::-webkit-outer-spin-button {
           -webkit-appearance: none;
           margin: 0;
         }
 
-        input[type=number] {
+        input[type='number'] {
           -moz-appearance: textfield;
         }
 
         /* Ensure all inputs are properly aligned */
-        input[type=number] {
+        input[type='number'] {
           text-align: right;
         }
       `}</style>

@@ -7,6 +7,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useEffect, useState } from 'react';
 
@@ -31,8 +32,52 @@ const defaultMarkets: Market[] = [
   { symbol: 'XRPUSDC', bid: 0, ask: 0 },
 ];
 
+function LiveMarketSkeleton() {
+  return (
+    <div className="bg-transparent text-card-foreground shadow border border-dashed border-border rounded mx-4">
+      <div className="p-2 border-b border-dashed border-border flex justify-between items-center">
+        <Skeleton className="h-4 w-24" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-2 w-2 rounded-full" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+      <div className="max-h-96 overflow-y-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="sticky top-0 bg-background">SYMBOL</TableHead>
+              <TableHead className="sticky top-0 bg-background">BID</TableHead>
+              <TableHead className="sticky top-0 bg-background">ASK</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 9 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-6 h-6 rounded-full" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 export default function LiveMarket() {
   const [markets, setMarkets] = useState<Market[]>(defaultMarkets);
+  const [isLoading, setIsLoading] = useState(true);
   const symbols = defaultMarkets.map((m) => m.symbol);
   const { marketData, isConnected, error, subscribe } = useWebSocket();
 
@@ -49,6 +94,7 @@ export default function LiveMarket() {
       prevMarkets.map((market) => {
         const liveData = marketData.get(market.symbol);
         if (liveData) {
+          setIsLoading(false);
           const currentPrice = (liveData.bid + liveData.ask) / 2;
           const previousPrice = market.previousPrice || currentPrice;
 
@@ -164,6 +210,10 @@ export default function LiveMarket() {
     }
     return '';
   };
+
+  if (isLoading && !isConnected) {
+    return <LiveMarketSkeleton />;
+  }
 
   return (
     <div className="bg-transparent text-card-foreground shadow border border-dashed border-border rounded mx-4">
