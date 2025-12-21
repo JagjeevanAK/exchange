@@ -1,65 +1,67 @@
-import { Pool } from "pg";
+import { Pool } from 'pg';
 
 const pool = new Pool({
-    connectionString: process.env.TIMESCALE_DATABASE_URL || process.env.DATABASE_URL
+  connectionString: process.env.TIMESCALE_DATABASE_URL || process.env.DATABASE_URL,
 });
 
 interface CandleData {
-    timestamp: number;
-    open: number;
-    close: number;
-    high: number;
-    low: number;
-    volume: number;
-    decimal: number;
+  timestamp: number;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;
+  decimal: number;
 }
 
 interface GetCandlesParams {
-    asset: string;
-    startTime: number;
-    endTime: number;
-    timeframe: string;
+  asset: string;
+  startTime: number;
+  endTime: number;
+  timeframe: string;
 }
 
-// Map API timeframe to database view names
+// Map API timeframe to database view names (all lowercase to match TSDB views)
 const timeframeMap: { [key: string]: string } = {
-    '1s': '1s',
-    '1m': '1m',
-    '5m': '5m',
-    '15m': '15m',
-    '30m': '30m',
-    '1h': '1H',
-    '1H': '1H',
-    '1d': '1D',
-    '1D': '1D',
-    '1w': '1W',
-    '1W': '1W'
+  '1s': '1s',
+  '1m': '1m',
+  '5m': '5m',
+  '15m': '15m',
+  '30m': '30m',
+  '1h': '1h',
+  '1H': '1h',
+  '1d': '1d',
+  '1D': '1d',
+  '1w': '1w',
+  '1W': '1w',
 };
 
 export const getCandles = async ({
-    asset,
-    startTime,
-    endTime,
-    timeframe
+  asset,
+  startTime,
+  endTime,
+  timeframe,
 }: GetCandlesParams): Promise<CandleData[]> => {
-    const client = await pool.connect();
+  const client = await pool.connect();
 
-    try {
-        // Validate timeframe
-        const dbTimeframe = timeframeMap[timeframe];
-        if (!dbTimeframe) {
-            throw new Error(`Invalid timeframe: ${timeframe}. Supported: ${Object.keys(timeframeMap).join(', ')}`);
-        }
+  try {
+    // Validate timeframe
+    const dbTimeframe = timeframeMap[timeframe];
+    if (!dbTimeframe) {
+      throw new Error(
+        `Invalid timeframe: ${timeframe}. Supported: ${Object.keys(timeframeMap).join(', ')}`
+      );
+    }
 
-        // Convert Unix timestamps to PostgreSQL timestamps
-        const startDate = new Date(startTime * 1000).toISOString();
-        const endDate = new Date(endTime * 1000).toISOString();
+    // Convert Unix timestamps to PostgreSQL timestamps
+    const startDate = new Date(startTime * 1000).toISOString();
+    const endDate = new Date(endTime * 1000).toISOString();
 
-        // Construct the view name
-        const viewName = `trades_${dbTimeframe}`;
+    // Construct the view name
+    const viewName = `trades_${dbTimeframe}`;
 
-        // Query the materialized view
-        const query = `
+    // Query the materialized view
+    const query = `
             SELECT 
                 EXTRACT(EPOCH FROM bucket) as timestamp,
                 open,
@@ -74,64 +76,65 @@ export const getCandles = async ({
             ORDER BY bucket ASC;
         `;
 
-        const result = await client.query(query, [asset, startDate, endDate]);
+    const result = await client.query(query, [asset, startDate, endDate]);
 
-        // Format the response according to your API specification
-        const candles: CandleData[] = result.rows.map((row: any) => ({
-            timestamp: Math.floor(row.timestamp),
-            open: Math.floor(parseFloat(row.open) * 10000), // Convert to 4 decimal places as integer
-            close: Math.floor(parseFloat(row.close) * 10000),
-            high: Math.floor(parseFloat(row.high) * 10000),
-            low: Math.floor(parseFloat(row.low) * 10000),
-            volume: parseFloat(row.volume),
-            decimal: 4
-        }));
+    // Format the response according to your API specification
+    const candles: CandleData[] = result.rows.map((row: any) => ({
+      timestamp: Math.floor(row.timestamp),
+      open: Math.floor(parseFloat(row.open) * 10000), // Convert to 4 decimal places as integer
+      close: Math.floor(parseFloat(row.close) * 10000),
+      high: Math.floor(parseFloat(row.high) * 10000),
+      low: Math.floor(parseFloat(row.low) * 10000),
+      volume: parseFloat(row.volume),
+      decimal: 4,
+    }));
 
-        return candles;
-
-    } catch (error) {
-        console.error('Error fetching candles:', error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    return candles;
+  } catch (error) {
+    console.error('Error fetching candles:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 // Get available symbols
 export const getAvailableSymbols = async (): Promise<string[]> => {
-    const client = await pool.connect();
+  const client = await pool.connect();
 
-    try {
-        const query = `
+  try {
+    const query = `
             SELECT DISTINCT symbol 
             FROM trades_1m 
             ORDER BY symbol;
         `;
 
-        const result = await client.query(query);
-        return result.rows.map((row: any) => row.symbol);
-
-    } catch (error) {
-        console.error('Error fetching available symbols:', error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query);
+    return result.rows.map((row: any) => row.symbol);
+  } catch (error) {
+    console.error('Error fetching available symbols:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 // Get latest candle for a symbol
-export const getLatestCandle = async (asset: string, timeframe: string = '1m'): Promise<CandleData | null> => {
-    const client = await pool.connect();
+export const getLatestCandle = async (
+  asset: string,
+  timeframe: string = '1m'
+): Promise<CandleData | null> => {
+  const client = await pool.connect();
 
-    try {
-        const dbTimeframe = timeframeMap[timeframe];
-        if (!dbTimeframe) {
-            throw new Error(`Invalid timeframe: ${timeframe}`);
-        }
+  try {
+    const dbTimeframe = timeframeMap[timeframe];
+    if (!dbTimeframe) {
+      throw new Error(`Invalid timeframe: ${timeframe}`);
+    }
 
-        const viewName = `trades_${dbTimeframe}`;
+    const viewName = `trades_${dbTimeframe}`;
 
-        const query = `
+    const query = `
             SELECT 
                 EXTRACT(EPOCH FROM bucket) as timestamp,
                 open,
@@ -145,27 +148,85 @@ export const getLatestCandle = async (asset: string, timeframe: string = '1m'): 
             LIMIT 1;
         `;
 
-        const result = await client.query(query, [asset]);
+    const result = await client.query(query, [asset]);
 
-        if (result.rows.length === 0) {
-            return null;
-        }
-
-        const row = result.rows[0];
-        return {
-            timestamp: Math.floor(row.timestamp),
-            open: Math.floor(parseFloat(row.open) * 10000),
-            close: Math.floor(parseFloat(row.close) * 10000),
-            high: Math.floor(parseFloat(row.high) * 10000),
-            low: Math.floor(parseFloat(row.low) * 10000),
-            volume: parseFloat(row.volume),
-            decimal: 4
-        };
-
-    } catch (error) {
-        console.error('Error fetching latest candle:', error);
-        throw error;
-    } finally {
-        client.release();
+    if (result.rows.length === 0) {
+      return null;
     }
+
+    const row = result.rows[0];
+    return {
+      timestamp: Math.floor(row.timestamp),
+      open: Math.floor(parseFloat(row.open) * 10000),
+      close: Math.floor(parseFloat(row.close) * 10000),
+      high: Math.floor(parseFloat(row.high) * 10000),
+      low: Math.floor(parseFloat(row.low) * 10000),
+      volume: parseFloat(row.volume),
+      decimal: 4,
+    };
+  } catch (error) {
+    console.error('Error fetching latest candle:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Debug: Get raw trade count and latest trades
+export const getDebugInfo = async (
+  asset?: string
+): Promise<{
+  totalTrades: number;
+  symbolTrades: number;
+  latestTrades: Array<{ symbol: string; price: string; time: string }>;
+  availableSymbols: string[];
+}> => {
+  const client = await pool.connect();
+
+  try {
+    // Get total trade count
+    const totalResult = await client.query('SELECT COUNT(*) as count FROM trades;');
+    const totalTrades = parseInt(totalResult.rows[0]?.count || '0');
+
+    // Get trade count for specific symbol
+    let symbolTrades = 0;
+    if (asset) {
+      const symbolResult = await client.query(
+        'SELECT COUNT(*) as count FROM trades WHERE s = $1;',
+        [asset]
+      );
+      symbolTrades = parseInt(symbolResult.rows[0]?.count || '0');
+    }
+
+    // Get latest 5 trades
+    const latestResult = await client.query(`
+            SELECT s as symbol, p as price, t as time 
+            FROM trades 
+            ORDER BY t DESC 
+            LIMIT 5;
+        `);
+    const latestTrades = latestResult.rows.map(
+      (row: { symbol: string; price: string; time: Date }) => ({
+        symbol: row.symbol,
+        price: row.price,
+        time: row.time.toISOString(),
+      })
+    );
+
+    // Get available symbols
+    const symbolsResult = await client.query('SELECT DISTINCT s as symbol FROM trades;');
+    const availableSymbols = symbolsResult.rows.map((row: { symbol: string }) => row.symbol);
+
+    return {
+      totalTrades,
+      symbolTrades,
+      latestTrades,
+      availableSymbols,
+    };
+  } catch (error) {
+    console.error('Error fetching debug info:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
 };

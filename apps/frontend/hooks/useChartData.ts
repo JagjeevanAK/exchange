@@ -185,6 +185,10 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
       return;
     }
 
+    // Store the symbol/timeframe we're fetching for to handle race conditions
+    const fetchSymbol = symbol;
+    const fetchTimeframe = timeframe;
+
     try {
       setLoading(true);
       setError(null);
@@ -193,44 +197,55 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
       // Calculate appropriate time range based on timeframe
       const now = Math.floor(Date.now() / 1000);
 
-      // Time ranges matching backend limits
+      // Time ranges matching backend limits - fetch reasonable amount of data
       const timeRanges: { [key: string]: number } = {
-        '1s': 23 * 60 * 60, // 23 hours
-        '1m': 29 * 24 * 60 * 60, // 29 days
-        '5m': 89 * 24 * 60 * 60, // 89 days
-        '15m': 179 * 24 * 60 * 60, // 179 days
-        '30m': 364 * 24 * 60 * 60, // 364 days
-        '1h': 2 * 364 * 24 * 60 * 60, // ~2 years
-        '1H': 2 * 364 * 24 * 60 * 60,
-        '1d': 5 * 364 * 24 * 60 * 60, // ~5 years
-        '1D': 5 * 364 * 24 * 60 * 60,
-        '1w': 10 * 364 * 24 * 60 * 60, // ~10 years
-        '1W': 10 * 364 * 24 * 60 * 60,
+        '1s': 1 * 60 * 60, // 1 hour for 1s candles (3600 candles max)
+        '1m': 24 * 60 * 60, // 1 day for 1m candles (1440 candles)
+        '5m': 3 * 24 * 60 * 60, // 3 days for 5m candles
+        '15m': 7 * 24 * 60 * 60, // 7 days for 15m candles
+        '30m': 14 * 24 * 60 * 60, // 14 days for 30m candles
+        '1h': 30 * 24 * 60 * 60, // 30 days for 1h candles
+        '1H': 30 * 24 * 60 * 60,
+        '1d': 365 * 24 * 60 * 60, // 1 year for 1d candles
+        '1D': 365 * 24 * 60 * 60,
+        '1w': 2 * 365 * 24 * 60 * 60, // 2 years for 1w candles
+        '1W': 2 * 365 * 24 * 60 * 60,
       };
 
-      const timeRange = timeRanges[timeframe] || 24 * 60 * 60;
+      const timeRange = timeRanges[fetchTimeframe] || 24 * 60 * 60;
       const startTime = now - timeRange;
       const endTime = now;
 
       console.log(
-        `useChartData: Fetching historical candles from backend for ${symbol} ${timeframe}`
+        `useChartData: Fetching historical candles from backend for ${fetchSymbol} ${fetchTimeframe}`
       );
-      const response = await api.getCandles(symbol, timeframe, startTime, endTime);
+      const response = await api.getCandles(fetchSymbol, fetchTimeframe, startTime, endTime);
+
+      // Check if symbol/timeframe changed while we were fetching (race condition guard)
+      if (fetchSymbol !== symbol || fetchTimeframe !== timeframe) {
+        console.log('useChartData: Symbol/timeframe changed during fetch, discarding stale data');
+        return;
+      }
 
       if (response.candles && Array.isArray(response.candles) && response.candles.length > 0) {
         const chartData = convertToChartData(response.candles);
         setData(chartData);
         dataLoadedRef.current = true;
         console.log(
-          `useChartData: Loaded ${chartData.length} historical candles from TSDB for ${symbol}`
+          `useChartData: Loaded ${chartData.length} historical candles from TSDB for ${fetchSymbol}`
         );
       } else {
-        console.log('useChartData: No historical data in TSDB for', symbol);
+        console.log('useChartData: No historical data in TSDB for', fetchSymbol);
         setData([]);
         dataLoadedRef.current = true; // Still allow live updates
         // Not setting error - will build chart from live data
       }
     } catch (err) {
+      // Check if symbol/timeframe changed while we were fetching
+      if (fetchSymbol !== symbol || fetchTimeframe !== timeframe) {
+        console.log('useChartData: Symbol/timeframe changed during fetch, ignoring error');
+        return;
+      }
       console.error('useChartData: Error fetching historical data from backend:', err);
       setError('Failed to load historical data. Waiting for live updates...');
       setData([]);
@@ -240,14 +255,11 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
     }
   }, [symbol, timeframe, convertToChartData]);
 
-  // Initial data fetch
-  useEffect(() => {
-    fetchHistoricalData();
-  }, [fetchHistoricalData]);
-
-  // Clear data when symbol or timeframe changes
+  // Handle symbol/timeframe changes - clear state and fetch new data
   useEffect(() => {
     console.log('useChartData: Symbol or timeframe changed:', { symbol, timeframe });
+
+    // Reset state for new symbol/timeframe
     setData([]);
     setLoading(true);
     setError(null);
@@ -256,10 +268,15 @@ export function useChartData({ symbol, timeframe, enableRealTime = true }: UseCh
 
     // Unsubscribe from previous symbol
     if (previousSymbolRef.current && previousSymbolRef.current !== symbol) {
+      console.log('useChartData: Unsubscribing from previous symbol:', previousSymbolRef.current);
       unsubscribeRef.current([previousSymbolRef.current]);
-      previousSymbolRef.current = '';
     }
-  }, [symbol, timeframe]);
+
+    // Fetch historical data for the new symbol/timeframe
+    fetchHistoricalData();
+
+    // Note: previousSymbolRef is updated in the WebSocket subscription effect
+  }, [symbol, timeframe]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     data,

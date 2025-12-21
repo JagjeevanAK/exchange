@@ -52,7 +52,7 @@ export const useWebSocket = (initialSymbols: string[] = []): UseWebSocketReturn 
         updateScheduledRef.current = false;
         // Create new Map only when actually updating state
         setMarketData(new Map(marketDataRef.current));
-      }, 100); // Throttle to max 10 updates per second
+      }, 80);
     };
 
     // Set up handlers
