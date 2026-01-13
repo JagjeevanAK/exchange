@@ -5,10 +5,8 @@ import type { JWTPayload } from '../types/auth';
 const JWT_SECRET = process.env.JWT_SECRET || 'jwt-key';
 
 export const auth = (req: Request, res: Response, next: NextFunction) => {
-  // First try to get token from cookie
   let token = req.cookies?.accessToken;
 
-  // If no cookie, try Authorization header (for backward compatibility)
   if (!token) {
     const authHeader = req.headers.authorization;
     if (authHeader) {

@@ -1,35 +1,40 @@
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
-// Redis configuration
 const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
 
-// Create notification queue
 const notificationQueue = new Queue('notifications', {
   connection: redisConnection,
   defaultJobOptions: {
-    attempts: 3, // Retry failed jobs up to 3 times
+    attempts: 3,
     backoff: {
       type: 'exponential',
-      delay: 2000, // Start with 2 second delay
+      delay: 2000,
     },
-    removeOnComplete: 100, // Keep last 100 completed jobs
-    removeOnFail: 200, // Keep last 200 failed jobs
+    removeOnComplete: 100,
+    removeOnFail: 200,
   },
 });
 
-// Interface for notification data
 export interface NotificationData {
   to: string;
+  phone?: string;
   asset: string;
   amount: number;
   quantity: number;
   order: string;
+  type?:
+    | 'OPEN'
+    | 'CLOSE'
+    | 'PENDING'
+    | 'CANCELLED'
+    | 'LIMIT_EXECUTED'
+    | 'TP_TRIGGERED'
+    | 'SL_TRIGGERED';
 }
 
-// Function to send notification
 export const sendNotification = async (data: NotificationData) => {
   try {
     const job = await notificationQueue.add('send-notification', data, {
@@ -45,5 +50,4 @@ export const sendNotification = async (data: NotificationData) => {
   }
 };
 
-// Export queue for monitoring/debugging purposes
 export default notificationQueue;

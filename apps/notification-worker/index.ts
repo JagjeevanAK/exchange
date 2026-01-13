@@ -10,63 +10,73 @@ const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:63
 });
 
 const resend = new Resend(process.env.RESEND_API_KEY as string);
+const fromEmail = process.env.FROM_EMAIL || 'noreply@yourdomain.com';
 
-let client: any = null;
+let twilioClient: ReturnType<typeof twilio> | null = null;
 if (
   process.env.TWILIO_ACCOUNT_SID &&
   process.env.TWILIO_AUTH_TOKEN &&
   process.env.TWILIO_ACCOUNT_SID !== 'your-twilio-sid' &&
   process.env.TWILIO_AUTH_TOKEN !== 'your-twilio-token'
 ) {
-  client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  console.log('Twilio client initialized for SMS notifications');
 } else {
   console.warn('Twilio credentials not configured. SMS notifications will be disabled.');
 }
 
 interface NotificationJobData {
   to: string;
+  phone?: string;
   asset: string;
   amount: number;
   quantity: number;
   order: string;
+  type?: 'OPEN' | 'CLOSE';
 }
 
 const notificationWorker = new Worker<NotificationJobData>(
   'notifications',
   async (job: Job<NotificationJobData>) => {
     try {
-      const { to, asset, amount, quantity, order } = job.data;
+      const { to, phone, asset, amount, quantity, order, type = 'OPEN' } = job.data;
 
-      console.log(`Processing notification job ${job.id} for order ${order}`);
+      console.log(`Processing notification job ${job.id} for order ${order} (${type})`);
 
       const { subject, text, html } = emailTemplate(asset, amount, quantity, order);
 
-      await resend.emails.send({
-        from: 'noreply@yourdomain.com',
-        to,
-        subject,
-        html,
-        text,
-      });
-
-      console.log(`Email sent successfully to ${to}`);
-
-      if (client) {
-        const body = smsTemplete(asset, amount, quantity, order);
-        await client.messages.create({
-          body,
-          from: process.env.TWILIO_PHONE_NUMBER,
+      try {
+        await resend.emails.send({
+          from: fromEmail,
           to,
+          subject,
+          html,
+          text,
         });
-        console.log(`SMS sent successfully to ${to}`);
-      } else {
-        console.log('SMS not sent - Twilio not configured');
+        console.log(`Email sent successfully to ${to}`);
+      } catch (emailError) {
+        console.error(`Failed to send email to ${to}:`, emailError);
+      }
+
+      // Send SMS notification only if phone number is provided and Twilio is configured
+      if (twilioClient && phone) {
+        try {
+          const body = smsTemplete(asset, amount, quantity, order);
+          await twilioClient.messages.create({
+            body,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: phone,
+          });
+          console.log(`SMS sent successfully to ${phone}`);
+        } catch (smsError) {
+          console.error(`Failed to send SMS to ${phone}:`, smsError);
+        }
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Error while sending Email and SMS:', error);
-      throw error; 
+      console.error('Error processing notification job:', error);
+      throw error;
     }
   },
   {

@@ -40,7 +40,14 @@ export default function Home() {
 
   return (
     <div className=" flex justify-center items-center h-screen flex-col">
-      <Image src={logoSrc} alt="FutureX logo" width={350} height={50} priority />
+      <Image
+        src={logoSrc}
+        alt="FutureX logo"
+        width={350}
+        height={50}
+        priority
+        style={{ height: 'auto' }}
+      />
       <div className="p-6">
         Please sign in or register for full access to FutureX content and services.
       </div>

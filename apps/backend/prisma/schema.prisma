@@ -20,45 +20,71 @@ enum TradeType {
   SHORT
 }
 
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
 enum Status { 
   OPEN
   CLOSED
+  PENDING    // Limit order waiting for price to be hit
+  CANCELLED  // Order was cancelled by user
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String     @id @default(uuid())
+  email     String     @unique
   password  String
-  balance   Json     @default("{\"usd\": {\"tradable\": 5000.0, \"locked\": 0.0}}")
-  trades    Trade[]
+  balance   Json       @default("{\"usd\": {\"tradable\": 5000.0, \"locked\": 0.0}}")
+  positions Position[]
   holdings  Holding[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
-model Trade {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  asset     String
-  type      TradeType
-  status    Status
-  margin    Float
-  amount    Float
-  quantity  Float
-  leverage  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Renamed from Trade to Position to avoid conflict with poller's "trades" table
+// The poller's "trades" table stores market tick data (TimescaleDB hypertable)
+// This "positions" table stores user CFD positions
+model Position {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  asset           String
+  type            TradeType
+  status          Status
+  orderType       OrderType @default(MARKET)  // MARKET or LIMIT order
+  margin          Float
+  amount          Float     // Notional value (margin * leverage)
+  quantity        Float
+  leverage        Int
+  entryPrice      Float     // Price at which position was opened (0 for pending limit orders)
+  limitPrice      Float?    // Target price for limit orders (null for market orders)
+  exitPrice       Float?    // Price at which position was closed (null if open)
+  pnl             Float?    // Realized P&L (null until closed)
+  takeProfitPrice Float?    // Optional take profit price
+  stopLossPrice   Float?    // Optional stop loss price
+  closedAt        DateTime? // When position was closed
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, status])  // Index for fetching user's orders by status
+  @@index([status, asset])   // Index for price monitor to find pending orders by asset
+  @@map("positions") // Explicit table name to be clear
 }
 
 model Holding {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  asset     String
-  quantity  Float
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  asset        String
+  quantity     Float
   averagePrice Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@unique([userId, asset])
+  @@map("holdings")
 }
+
+

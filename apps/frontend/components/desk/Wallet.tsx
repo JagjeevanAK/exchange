@@ -1,36 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useWallet } from './WalletContext';
 
-function WalletSkeleton() {
-  return (
-    <div className="flex gap-2 w-full">
-      <Skeleton className="flex-1 h-10" />
-      <Skeleton className="h-10 w-20" />
-    </div>
-  );
+// Format balance to display with commas and 2 decimal places
+function formatBalance(amount: number): string {
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function WalletMenu() {
   const [open, setOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { balance, isLoading } = useWallet();
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return <WalletSkeleton />;
-  }
+  // Calculate derived values
+  const tradableBalance = balance.tradable;
+  const lockedBalance = balance.locked;
+  const totalEquity = tradableBalance + lockedBalance;
+  const freeMargin = tradableBalance;
+  const marginLevel =
+    lockedBalance > 0 ? ((totalEquity / lockedBalance) * 100).toFixed(2) + '%' : '-';
 
   return (
     <div className="flex gap-2 w-full">
@@ -41,7 +40,12 @@ export default function WalletMenu() {
             variant="outline"
             className="flex-1 items-center gap-2 text-lg font-semibold rounded-md"
           >
-            9,999.54 USD
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              formatBalance(tradableBalance)
+            )}{' '}
+            USD
             {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </Button>
         </DropdownMenuTrigger>
@@ -51,23 +55,23 @@ export default function WalletMenu() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Balance</span>
-              <span className="font-medium">9,999.54 USD</span>
+              <span className="font-medium">{formatBalance(tradableBalance)} USD</span>
             </div>
             <div className="flex justify-between">
               <span>Equity</span>
-              <span className="font-medium">9,999.54 USD</span>
+              <span className="font-medium">{formatBalance(totalEquity)} USD</span>
             </div>
             <div className="flex justify-between">
               <span>Margin</span>
-              <span className="font-medium">0.00 USD</span>
+              <span className="font-medium">{formatBalance(lockedBalance)} USD</span>
             </div>
             <div className="flex justify-between">
               <span>Free margin</span>
-              <span className="font-medium">9,999.54 USD</span>
+              <span className="font-medium">{formatBalance(freeMargin)} USD</span>
             </div>
             <div className="flex justify-between">
               <span>Margin level</span>
-              <span className="font-medium">-</span>
+              <span className="font-medium">{marginLevel}</span>
             </div>
             <div className="flex justify-between">
               <span>Account leverage</span>

@@ -13,7 +13,6 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
-  // Check authentication status on mount
   const checkAuthStatus = useCallback(async () => {
     try {
       const result = await api.checkAuth();
@@ -24,7 +23,7 @@ export const useAuth = () => {
         setIsAuthenticated(false);
         setUser(null);
       }
-    } catch {
+    } catch (error) {
       setIsAuthenticated(false);
       setUser(null);
     } finally {

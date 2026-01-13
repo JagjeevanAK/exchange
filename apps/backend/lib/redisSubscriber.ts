@@ -1,13 +1,168 @@
-import Redis from "ioredis";
+import Redis from 'ioredis';
 
-const sub = new Redis();
+// Redis subscriber instance
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+let subscriber: Redis | null = null;
 
-export default async function pollerSubscriber(ticker: string){
-    await sub.connect();
+// Store callbacks for each symbol
+const priceCallbacks: Map<string, Set<(price: number, symbol: string) => void>> = new Map();
 
-    sub.on('connection',(channel, msg)=>{
-        const payload = JSON.parse(msg);
+// Track subscribed symbols to avoid duplicate subscriptions
+const subscribedSymbols: Set<string> = new Set();
 
-        
-    });
+// Latest prices cache
+const latestPrices: Map<string, number> = new Map();
+
+export interface TickerData {
+  E: string; // Event time
+  T: string; // Trade time
+  s: string; // Symbol
+  t: string; // Trade ID
+  p: string; // Price
+  q: string; // Quantity
 }
+
+/**
+ * Initialize the Redis subscriber connection
+ */
+export async function initRedisSubscriber(): Promise<void> {
+  if (subscriber) {
+    console.log('Redis subscriber already initialized');
+    return;
+  }
+
+  subscriber = new Redis(redisUrl);
+
+  subscriber.on('connect', () => {
+    console.log('Redis subscriber connected');
+  });
+
+  subscriber.on('error', (err) => {
+    console.error('Redis subscriber error:', err);
+  });
+
+  subscriber.on('message', (channel: string, message: string) => {
+    try {
+      const data: TickerData = JSON.parse(message);
+      const price = parseFloat(data.p);
+      const symbol = data.s;
+
+      // Update latest price cache
+      latestPrices.set(symbol, price);
+
+      // Call all registered callbacks for this symbol
+      const callbacks = priceCallbacks.get(symbol);
+      if (callbacks) {
+        callbacks.forEach((callback) => {
+          try {
+            callback(price, symbol);
+          } catch (err) {
+            console.error(`Error in price callback for ${symbol}:`, err);
+          }
+        });
+      }
+    } catch (err) {
+      console.error(`Error parsing message from ${channel}:`, err);
+    }
+  });
+}
+
+/**
+ * Subscribe to price updates for a specific symbol
+ * @param symbol - Trading pair symbol (e.g., 'BTCUSDT')
+ * @param callback - Function to call when price updates
+ */
+export async function subscribeToPrice(
+  symbol: string,
+  callback: (price: number, symbol: string) => void
+): Promise<void> {
+  if (!subscriber) {
+    await initRedisSubscriber();
+  }
+
+  // Add callback to the set
+  if (!priceCallbacks.has(symbol)) {
+    priceCallbacks.set(symbol, new Set());
+  }
+  priceCallbacks.get(symbol)!.add(callback);
+
+  // Subscribe to the channel if not already subscribed
+  if (!subscribedSymbols.has(symbol)) {
+    await subscriber!.subscribe(symbol);
+    subscribedSymbols.add(symbol);
+    console.log(`Subscribed to price updates for ${symbol}`);
+  }
+}
+
+/**
+ * Subscribe to price updates for multiple symbols
+ * @param symbols - Array of trading pair symbols
+ * @param callback - Function to call when any price updates
+ */
+export async function subscribeToMultiplePrices(
+  symbols: string[],
+  callback: (price: number, symbol: string) => void
+): Promise<void> {
+  for (const symbol of symbols) {
+    await subscribeToPrice(symbol, callback);
+  }
+}
+
+/**
+ * Unsubscribe a callback from a symbol
+ * @param symbol - Trading pair symbol
+ * @param callback - The callback to remove
+ */
+export async function unsubscribeFromPrice(
+  symbol: string,
+  callback: (price: number, symbol: string) => void
+): Promise<void> {
+  const callbacks = priceCallbacks.get(symbol);
+  if (callbacks) {
+    callbacks.delete(callback);
+
+    // If no more callbacks for this symbol, unsubscribe from Redis
+    if (callbacks.size === 0) {
+      priceCallbacks.delete(symbol);
+      subscribedSymbols.delete(symbol);
+      if (subscriber) {
+        await subscriber.unsubscribe(symbol);
+        console.log(`Unsubscribed from price updates for ${symbol}`);
+      }
+    }
+  }
+}
+
+/**
+ * Get the latest cached price for a symbol
+ * @param symbol - Trading pair symbol
+ * @returns The latest price or undefined if not available
+ */
+export function getLatestPrice(symbol: string): number | undefined {
+  return latestPrices.get(symbol);
+}
+
+/**
+ * Get all symbols currently being tracked
+ * @returns Set of subscribed symbols
+ */
+export function getSubscribedSymbols(): Set<string> {
+  return new Set(subscribedSymbols);
+}
+
+/**
+ * Cleanup and close the Redis connection
+ */
+export async function closeRedisSubscriber(): Promise<void> {
+  if (subscriber) {
+    await subscriber.quit();
+    subscriber = null;
+    subscribedSymbols.clear();
+    priceCallbacks.clear();
+    latestPrices.clear();
+    console.log('Redis subscriber closed');
+  }
+}
+
+// Default export for backward compatibility
+export default initRedisSubscriber;

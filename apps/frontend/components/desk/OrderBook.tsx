@@ -1,95 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, Loader2 } from 'lucide-react';
 import { useNumberInput } from '@/hooks/useNumberInput';
+import { useTradingContext } from './TradingContext';
+import { useWallet } from './WalletContext';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 type OrderSide = 'buy' | 'sell';
 type OrderType = 'market' | 'limit';
 
-interface OrderDetails {
-  side: OrderSide;
-  orderType: OrderType;
-  amount: number;
-  leverage: number;
-  takeProfitPrice: string;
-  stopLossPrice: string;
-  takeProfitGain: string;
-  stopLossAmount: string;
-  enableTakeProfitStopLoss: boolean;
-}
-
-function OrderBookSkeleton() {
-  return (
-    <div className="w-full h-full px-4 pb-2">
-      <Card className="p-4 space-y-3 h-full flex flex-col">
-        {/* Tabs skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="flex w-full max-w-md gap-0">
-            <Skeleton className="flex-1 h-12 rounded-l-md" />
-            <Skeleton className="flex-1 h-12 rounded-r-md" />
-          </div>
-        </div>
-
-        {/* Market/Limit buttons skeleton */}
-        <div className="flex gap-2">
-          <Skeleton className="flex-1 h-10" />
-          <Skeleton className="flex-1 h-10" />
-        </div>
-
-        {/* Amount input skeleton */}
-        <Skeleton className="h-16 rounded-lg" />
-
-        {/* Leverage section skeleton */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-8 w-8" />
-          </div>
-          <Skeleton className="h-4 w-full" />
-          <div className="flex justify-between">
-            <Skeleton className="h-3 w-8" />
-            <Skeleton className="h-3 w-8" />
-            <Skeleton className="h-3 w-8" />
-            <Skeleton className="h-3 w-8" />
-            <Skeleton className="h-3 w-8" />
-            <Skeleton className="h-3 w-8" />
-          </div>
-        </div>
-
-        {/* Take profit/Stop loss checkbox skeleton */}
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-4" />
-          <Skeleton className="h-4 w-36" />
-        </div>
-
-        {/* Place order button skeleton */}
-        <div className="flex-1 flex items-end">
-          <Skeleton className="w-full h-12" />
-        </div>
-      </Card>
-    </div>
-  );
-}
-
 export default function OrderBook() {
+  const { selectedSymbol } = useTradingContext();
+  const { refreshBalance } = useWallet();
   const [activeTab, setActiveTab] = useState<OrderSide>('buy');
   const [orderType, setOrderType] = useState<OrderType>('market');
   const [leverage, setLeverage] = useState<number>(13.2);
   const [enableTakeProfitStopLoss, setEnableTakeProfitStopLoss] = useState<boolean>(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Use number input hooks for formatted inputs
   const amountInput = useNumberInput({ initialValue: '', decimals: 2 });
+  const limitPriceInput = useNumberInput({ initialValue: '', decimals: 2 });
   const takeProfitPriceInput = useNumberInput({ initialValue: '', decimals: 2 });
   const takeProfitGainInput = useNumberInput({ initialValue: '', decimals: 2 });
   const stopLossPriceInput = useNumberInput({ initialValue: '', decimals: 2 });
@@ -103,30 +39,108 @@ export default function OrderBook() {
     setLeverage(Math.max(1.1, Math.min(100, value)));
   };
 
-  const handlePlaceOrder = () => {
-    const orderDetails: OrderDetails = {
-      side: activeTab,
-      orderType,
-      amount: amountInput.numericValue,
-      leverage,
-      takeProfitPrice: takeProfitPriceInput.rawValue,
-      stopLossPrice: stopLossPriceInput.rawValue,
-      takeProfitGain: takeProfitGainInput.rawValue,
-      stopLossAmount: stopLossAmountInput.rawValue,
-      enableTakeProfitStopLoss,
-    };
-    console.log('Placing order:', orderDetails);
-    // Reset form
-    amountInput.reset();
-    takeProfitPriceInput.reset();
-    stopLossPriceInput.reset();
-    takeProfitGainInput.reset();
-    stopLossAmountInput.reset();
+  // Extract base asset from trading pair (e.g., BTCUSDT -> BTC)
+  const getBaseAsset = (symbol: string): string => {
+    const quoteCurrencies = ['USDT', 'USDC', 'FDUSD', 'USD'];
+    for (const quote of quoteCurrencies) {
+      if (symbol.endsWith(quote)) {
+        return symbol.replace(quote, '');
+      }
+    }
+    return symbol;
   };
 
-  if (!isMounted) {
-    return <OrderBookSkeleton />;
-  }
+  const handlePlaceOrder = async () => {
+    if (isSubmitting) return;
+
+    const margin = amountInput.numericValue;
+
+    if (margin <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    // Validate limit price for limit orders
+    if (orderType === 'limit') {
+      const limitPrice = limitPriceInput.numericValue;
+      if (limitPrice <= 0) {
+        toast.error('Please enter a valid limit price');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const asset = getBaseAsset(selectedSymbol);
+      const tradeType = activeTab === 'buy' ? 'LONG' : 'SHORT';
+
+      const tradeData: {
+        asset: string;
+        type: 'BUY' | 'SELL' | 'LONG' | 'SHORT';
+        margin: number;
+        leverage: number;
+        orderType: 'MARKET' | 'LIMIT';
+        limitPrice?: number;
+        takeProfitPrice?: number;
+        stopLossPrice?: number;
+      } = {
+        asset,
+        type: tradeType,
+        margin,
+        leverage: Math.round(leverage * 10) / 10, // Round to 1 decimal
+        orderType: orderType === 'market' ? 'MARKET' : 'LIMIT',
+      };
+
+      // Add limit price for limit orders
+      if (orderType === 'limit') {
+        tradeData.limitPrice = limitPriceInput.numericValue;
+      }
+
+      // Add TP/SL if enabled
+      if (enableTakeProfitStopLoss) {
+        if (takeProfitPriceInput.numericValue > 0) {
+          tradeData.takeProfitPrice = takeProfitPriceInput.numericValue;
+        }
+        if (stopLossPriceInput.numericValue > 0) {
+          tradeData.stopLossPrice = stopLossPriceInput.numericValue;
+        }
+      }
+
+      const response = await api.placeTrade(tradeData);
+
+      // Different toast messages for market vs limit orders
+      if (orderType === 'limit' && response.position?.status === 'PENDING') {
+        toast.success(`Limit order placed!`, {
+          description: `${asset} ${tradeType} @ $${limitPriceInput.numericValue} - Waiting for price`,
+        });
+      } else {
+        toast.success(`${tradeType} order executed!`, {
+          description: `${asset} - Margin: $${margin} @ ${leverage}x leverage`,
+        });
+      }
+
+      console.log('Trade response:', response);
+
+      // Refresh balance to reflect the margin deduction
+      await refreshBalance();
+
+      // Reset form
+      amountInput.reset();
+      limitPriceInput.reset();
+      takeProfitPriceInput.reset();
+      stopLossPriceInput.reset();
+      takeProfitGainInput.reset();
+      stopLossAmountInput.reset();
+    } catch (error) {
+      console.error('Trade error:', error);
+      toast.error('Failed to place order', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="w-full h-full px-4 pb-2">
@@ -181,9 +195,38 @@ export default function OrderBook() {
           </Button>
         </div>
 
-        {/* WBTC Section */}
+        {/* Limit Price Input - Only shown for limit orders */}
+        {orderType === 'limit' && (
+          <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Limit Price (USD)</span>
+              <span className="text-xs text-muted-foreground">
+                {activeTab === 'buy' ? 'Buy when price ≤' : 'Sell when price ≥'}
+              </span>
+            </div>
+            <div className="text-right">
+              <input
+                type="text"
+                placeholder="0.00"
+                value={limitPriceInput.displayValue}
+                onChange={(e) => limitPriceInput.handleChange(e.target.value)}
+                className="bg-transparent border-none outline-none text-lg font-medium text-right w-full focus:ring-0 placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {activeTab === 'buy'
+                ? 'For LONG: Limit price should be below current market price'
+                : 'For SHORT: Limit price should be above current market price'}
+            </div>
+          </div>
+        )}
+
+        {/* Amount Section */}
         <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-          <div className="flex items-center justify-between">{/* Work to do here */}</div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Margin (USD)</span>
+            <span className="text-xs text-muted-foreground">{getBaseAsset(selectedSymbol)}</span>
+          </div>
           <div className="text-right">
             <input
               type="text"
@@ -193,6 +236,15 @@ export default function OrderBook() {
               className="bg-transparent border-none outline-none text-lg font-medium text-right w-full focus:ring-0 placeholder:text-muted-foreground"
             />
           </div>
+          {amountInput.numericValue > 0 && (
+            <div className="text-xs text-muted-foreground text-right">
+              Position size: $
+              {(amountInput.numericValue * leverage).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+          )}
         </div>
 
         {/* Leverage Section */}
@@ -311,14 +363,34 @@ export default function OrderBook() {
         <div className="flex-1 flex items-end">
           <Button
             onClick={handlePlaceOrder}
-            disabled={!amountInput.displayValue || amountInput.numericValue <= 0}
+            disabled={
+              !amountInput.displayValue ||
+              amountInput.numericValue <= 0 ||
+              isSubmitting ||
+              (orderType === 'limit' && limitPriceInput.numericValue <= 0)
+            }
             className={`w-full h-12 text-lg font-semibold ${
               activeTab === 'buy'
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-red-600 hover:bg-red-700'
             } text-white`}
           >
-            {activeTab === 'buy' ? 'Long/Buy' : 'Short/Sell'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Placing Order...
+              </>
+            ) : orderType === 'limit' ? (
+              activeTab === 'buy' ? (
+                'Limit Long'
+              ) : (
+                'Limit Short'
+              )
+            ) : activeTab === 'buy' ? (
+              'Long/Buy'
+            ) : (
+              'Short/Sell'
+            )}
           </Button>
         </div>
       </Card>

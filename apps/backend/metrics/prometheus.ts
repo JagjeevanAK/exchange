@@ -1,7 +1,5 @@
-// metrics/prometheus.ts
 import client from 'prom-client';
 
-// HTTP Request metrics
 export const httpRequestDuration = new client.Histogram({
   name: 'http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',
@@ -85,7 +83,6 @@ export const candleDataRequests = new client.Counter({
   labelNames: ['symbol', 'timeframe'],
 });
 
-// Register all metrics
 client.register.registerMetric(httpRequestDuration);
 client.register.registerMetric(httpRequestTotal);
 client.register.registerMetric(authAttempts);

@@ -16,7 +16,7 @@ function ChartSkeleton() {
   ];
 
   return (
-    <div className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded p-4">
+    <div className="absolute inset-0 bg-background border border-dashed border-border rounded p-4 z-10">
       <div className="flex flex-col h-full">
         {/* Chart header skeleton */}
         <div className="flex justify-between items-center mb-4">
@@ -157,7 +157,14 @@ export default function MainChart() {
   );
 
   if (loading) {
-    return <ChartSkeleton />;
+    return (
+      <div
+        ref={chartContainerRef}
+        className="w-full h-full min-h-[400px] bg-background border border-dashed border-border rounded relative"
+      >
+        <ChartSkeleton />
+      </div>
+    );
   }
 
   if (error) {

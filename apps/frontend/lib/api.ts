@@ -37,16 +37,20 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Skip refresh attempt for the refresh endpoint itself or if already retried
+    if (originalRequest.url?.includes('/refresh') || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
     // If error is 401/403 and we haven't tried refreshing yet
-    if (
-      (error.response?.status === 401 || error.response?.status === 403) &&
-      !originalRequest._retry
-    ) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then(() => apiClient(originalRequest));
+        })
+          .then(() => apiClient(originalRequest))
+          .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
@@ -56,16 +60,13 @@ apiClient.interceptors.response.use(
         // Try to refresh the token
         await apiClient.post('/api/v1/user/refresh');
         processQueue();
+        isRefreshing = false;
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
-        // Refresh failed, redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = '/signin';
-        }
-        return Promise.reject(refreshError);
-      } finally {
         isRefreshing = false;
+        // Don't redirect on every 401 - let the component handle it
+        return Promise.reject(error);
       }
     }
 
@@ -121,7 +122,8 @@ export const api = {
     try {
       const res = await apiClient.get('/api/v1/user/me');
       return res.data;
-    } catch {
+    } catch (error) {
+      // 401 errors are expected when user is not authenticated
       return { authenticated: false, user: null };
     }
   },
@@ -197,13 +199,32 @@ export const api = {
   },
 
   // Trading APIs
-  placeTrade: async (tradeData: unknown) => {
+  placeTrade: async (tradeData: {
+    asset: string;
+    type: 'BUY' | 'SELL' | 'LONG' | 'SHORT';
+    margin: number;
+    leverage: number;
+    orderType?: 'MARKET' | 'LIMIT';
+    limitPrice?: number;
+    takeProfitPrice?: number;
+    stopLossPrice?: number;
+  }) => {
     try {
       const res = await apiClient.post('/api/v1/trade', tradeData);
       return res.data;
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       throw new Error(axiosError.response?.data?.message || 'Failed to place trade');
+    }
+  },
+
+  closeTrade: async (tradeId: string) => {
+    try {
+      const res = await apiClient.post(`/api/v1/trades/${tradeId}/close`);
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to close trade');
     }
   },
 
@@ -219,11 +240,45 @@ export const api = {
 
   getClosedTrades: async () => {
     try {
-      const res = await apiClient.get('/api/v1/trades');
+      const res = await apiClient.get('/api/v1/trades/closed');
       return res.data;
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       throw new Error(axiosError.response?.data?.message || 'Failed to fetch closed trades');
+    }
+  },
+
+  // Pending/Limit order APIs
+  getPendingOrders: async () => {
+    try {
+      const res = await apiClient.get('/api/v1/orders/pending');
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to fetch pending orders');
+    }
+  },
+
+  cancelOrder: async (orderId: string) => {
+    try {
+      const res = await apiClient.delete(`/api/v1/orders/${orderId}`);
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to cancel order');
+    }
+  },
+
+  modifyOrder: async (
+    orderId: string,
+    data: { limitPrice?: number; takeProfitPrice?: number; stopLossPrice?: number }
+  ) => {
+    try {
+      const res = await apiClient.put(`/api/v1/orders/${orderId}`, data);
+      return res.data;
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      throw new Error(axiosError.response?.data?.message || 'Failed to modify order');
     }
   },
 };
