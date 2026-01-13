@@ -1,5 +1,5 @@
 import type { Ticker } from "../types";
-import { pool } from "./db";
+import { pool } from '@exchange/db';
 
 export async function insertTrade(dbData: Ticker ) {
     await pool.query(

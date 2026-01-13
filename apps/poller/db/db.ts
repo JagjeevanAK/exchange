@@ -1,19 +1,4 @@
-import { Pool } from 'pg';
-
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const timeframes = [
-  { name: '1s', interval: '1 second' },
-  { name: '1m', interval: '1 minute' },
-  { name: '5m', interval: '5 minutes' },
-  { name: '15m', interval: '15 minutes' },
-  { name: '30m', interval: '30 minutes' },
-  { name: '1h', interval: '1 hour' },
-  { name: '1d', interval: '1 day' },
-  { name: '1w', interval: '1 week' },
-];
+import { pool, timeframes } from '@exchange/db';
 
 const initDB = async () => {
   const client = await pool.connect();

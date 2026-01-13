@@ -1,5 +1,5 @@
 {
-  "name": "message-worker",
+  "name": "@exchange/notification-worker",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -10,14 +10,17 @@
     "clean": "rm -rf dist node_modules/.cache"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@exchange/typescript-config": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@exchange/config": "workspace:*",
+    "@exchange/redis": "workspace:*",
     "bullmq": "^5.28.2",
-    "ioredis": "^5.4.1",
     "resend": "^6.0.2",
     "twilio": "^5.8.2"
   }

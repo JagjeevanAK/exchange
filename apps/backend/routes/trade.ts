@@ -1,6 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { prisma } from '../lib/prsimaClient';
-import { TradeType, Status, OrderType } from '../prisma/generated/prisma/client';
+import { prisma, TradeType, Status, OrderType } from '@exchange/db';
 import { sendNotification } from '../lib/notification-queue';
 import { getAssetBySymbol } from '../lib/assets';
 

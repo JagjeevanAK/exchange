@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "./generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -86,5 +86,3 @@ model Holding {
   @@unique([userId, asset])
   @@map("holdings")
 }
-
-

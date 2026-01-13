@@ -1,8 +1,5 @@
 import Redis from 'ioredis';
-
-// Redis subscriber instance
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-let subscriber: Redis | null = null;
+import { redisConfig } from '@exchange/config';
 
 // Store callbacks for each symbol
 const priceCallbacks: Map<string, Set<(price: number, symbol: string) => void>> = new Map();
@@ -12,6 +9,9 @@ const subscribedSymbols: Set<string> = new Set();
 
 // Latest prices cache
 const latestPrices: Map<string, number> = new Map();
+
+// Subscriber instance
+let subscriber: Redis | null = null;
 
 export interface TickerData {
   E: string; // Event time
@@ -25,13 +25,15 @@ export interface TickerData {
 /**
  * Initialize the Redis subscriber connection
  */
-export async function initRedisSubscriber(): Promise<void> {
+export async function initSubscriber(): Promise<void> {
   if (subscriber) {
     console.log('Redis subscriber already initialized');
     return;
   }
 
-  subscriber = new Redis(redisUrl);
+  subscriber = new Redis(redisConfig.url, {
+    maxRetriesPerRequest: redisConfig.maxRetriesPerRequest,
+  });
 
   subscriber.on('connect', () => {
     console.log('Redis subscriber connected');
@@ -68,16 +70,21 @@ export async function initRedisSubscriber(): Promise<void> {
 }
 
 /**
+ * Get the subscriber instance (initializes if needed)
+ */
+export function getSubscriber(): Redis | null {
+  return subscriber;
+}
+
+/**
  * Subscribe to price updates for a specific symbol
- * @param symbol - Trading pair symbol (e.g., 'BTCUSDT')
- * @param callback - Function to call when price updates
  */
 export async function subscribeToPrice(
   symbol: string,
   callback: (price: number, symbol: string) => void
 ): Promise<void> {
   if (!subscriber) {
-    await initRedisSubscriber();
+    await initSubscriber();
   }
 
   // Add callback to the set
@@ -96,8 +103,6 @@ export async function subscribeToPrice(
 
 /**
  * Subscribe to price updates for multiple symbols
- * @param symbols - Array of trading pair symbols
- * @param callback - Function to call when any price updates
  */
 export async function subscribeToMultiplePrices(
   symbols: string[],
@@ -110,8 +115,6 @@ export async function subscribeToMultiplePrices(
 
 /**
  * Unsubscribe a callback from a symbol
- * @param symbol - Trading pair symbol
- * @param callback - The callback to remove
  */
 export async function unsubscribeFromPrice(
   symbol: string,
@@ -135,8 +138,6 @@ export async function unsubscribeFromPrice(
 
 /**
  * Get the latest cached price for a symbol
- * @param symbol - Trading pair symbol
- * @returns The latest price or undefined if not available
  */
 export function getLatestPrice(symbol: string): number | undefined {
   return latestPrices.get(symbol);
@@ -144,7 +145,6 @@ export function getLatestPrice(symbol: string): number | undefined {
 
 /**
  * Get all symbols currently being tracked
- * @returns Set of subscribed symbols
  */
 export function getSubscribedSymbols(): Set<string> {
   return new Set(subscribedSymbols);
@@ -153,7 +153,7 @@ export function getSubscribedSymbols(): Set<string> {
 /**
  * Cleanup and close the Redis connection
  */
-export async function closeRedisSubscriber(): Promise<void> {
+export async function closeSubscriber(): Promise<void> {
   if (subscriber) {
     await subscriber.quit();
     subscriber = null;
@@ -163,6 +163,3 @@ export async function closeRedisSubscriber(): Promise<void> {
     console.log('Redis subscriber closed');
   }
 }
-
-// Default export for backward compatibility
-export default initRedisSubscriber;

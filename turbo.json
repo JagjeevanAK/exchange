@@ -5,7 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
@@ -15,7 +15,31 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "generate": {
+      "cache": false
     }
-  }
+  },
+  "globalDependencies": [".env"],
+  "globalPassThroughEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "JWT_SECRET",
+    "SESSION_SECRET",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_CALLBACK_URL",
+    "FRONTEND_URL",
+    "RESEND_API_KEY",
+    "FROM_EMAIL",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_PHONE_NUMBER"
+  ]
 }

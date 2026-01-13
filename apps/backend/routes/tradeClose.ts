@@ -1,6 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { prisma } from '../lib/prsimaClient';
-import { Status } from '../prisma/generated/prisma/client';
+import { prisma, Status } from '@exchange/db';
 import { getAssetBySymbol } from '../lib/assets';
 import { sendNotification } from '../lib/notification-queue';
 

@@ -1,0 +1,8 @@
+{
+  "extends": "@exchange/typescript-config/library.json",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts", "generated/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

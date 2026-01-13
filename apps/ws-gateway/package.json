@@ -1,5 +1,5 @@
 {
-  "name": "ws-gateway",
+  "name": "@exchange/ws-gateway",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -10,14 +10,17 @@
     "clean": "rm -rf dist node_modules/.cache"
   },
   "devDependencies": {
+    "@exchange/typescript-config": "workspace:*",
     "@types/ws": "^8.18.1",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "ioredis": "^5.7.0",
+    "@exchange/config": "workspace:*",
+    "@exchange/redis": "workspace:*",
     "ws": "^8.18.3"
   }
 }

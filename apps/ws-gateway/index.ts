@@ -1,9 +1,8 @@
-import { Redis } from 'ioredis';
+import { serverConfig } from '@exchange/config';
+import { createRedisClient, Redis } from '@exchange/redis';
 import { WebSocketServer, WebSocket } from 'ws';
 
-// Use Redis URL from environment variable, fallback to default for local development
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-const sub = new Redis(redisUrl);
+const sub = createRedisClient();
 const PORT = process.env.PORT || '8080';
 
 // Keeps track of all clients per symbol (on this WS node)

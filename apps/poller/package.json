@@ -1,5 +1,5 @@
 {
-  "name": "poller",
+  "name": "@exchange/poller",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -10,18 +10,18 @@
     "clean": "rm -rf dist node_modules/.cache"
   },
   "devDependencies": {
+    "@exchange/typescript-config": "workspace:*",
     "@types/bun": "latest",
-    "@types/pg": "^8.15.5",
     "@types/ws": "^8.18.1",
-    "@types/ioredis": "^5.0.0",
-    "tsx": "^4.20.5"
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "ioredis": "^5.7.0",
-    "pg": "^8.16.3",
+    "@exchange/config": "workspace:*",
+    "@exchange/db": "workspace:*",
+    "@exchange/redis": "workspace:*",
     "ws": "^8.18.3"
   }
 }

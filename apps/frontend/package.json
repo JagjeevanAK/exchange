@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "@exchange/frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -31,6 +31,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@exchange/typescript-config": "workspace:*",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

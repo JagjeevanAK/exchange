@@ -1,7 +1,8 @@
+import '@exchange/config';
 import { WebSocket } from 'ws';
+import { publish } from '@exchange/redis';
 import type { stream, Ticker } from './types';
 import { enqueue, consume } from './lib/dbQueue';
-import { pub } from './lib/publisher';
 
 const BINANCE_WS_URL =
   'wss://stream.binance.com:9443/stream?streams=btcfdusd@trade/ethusdt@trade/solusdt@trade/btcusdt@trade/ethfdusd@trade/ethusdc@trade/xrpusdc@trade/solfdusd@trade/solusdc@trade';
@@ -52,7 +53,7 @@ function connect() {
       };
 
       console.log(dbData);
-      await pub(dbData.s, JSON.stringify(dbData));
+      await publish(dbData.s, JSON.stringify(dbData));
       await enqueue('db', JSON.stringify(dbData));
     } catch (error) {
       console.error('Error processing message:', error);

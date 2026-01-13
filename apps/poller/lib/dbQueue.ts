@@ -1,15 +1,12 @@
-import { Redis } from 'ioredis';
+import { createRedisClient } from '@exchange/redis';
 import { insertTrade } from '../db/insertData';
-
-// Use Redis URL from environment variable, fallback to default for local development
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
 // Separate Redis clients for producer and consumer
 // brpop blocks the connection, so we need separate connections
-const producerRedis = new Redis(redisUrl);
-const consumerRedis = new Redis(redisUrl);
+const producerRedis = createRedisClient();
+const consumerRedis = createRedisClient();
 
-console.log(`DB Queue connecting to Redis at: ${redisUrl}`);
+console.log('DB Queue connecting to Redis...');
 
 export async function enqueue(chan: string, data: string) {
   await producerRedis.lpush(chan, data);

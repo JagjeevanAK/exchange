@@ -1,5 +1,6 @@
-import client from 'prom-client';
+import * as client from 'prom-client';
 
+// HTTP Request Metrics
 export const httpRequestDuration = new client.Histogram({
   name: 'http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',
@@ -83,16 +84,22 @@ export const candleDataRequests = new client.Counter({
   labelNames: ['symbol', 'timeframe'],
 });
 
-client.register.registerMetric(httpRequestDuration);
-client.register.registerMetric(httpRequestTotal);
-client.register.registerMetric(authAttempts);
-client.register.registerMetric(activeUsers);
-client.register.registerMetric(sessionsTotal);
-client.register.registerMetric(tradesTotal);
-client.register.registerMetric(tradeValue);
-client.register.registerMetric(openTradesGauge);
-client.register.registerMetric(portfolioValue);
-client.register.registerMetric(databaseQueryDuration);
-client.register.registerMetric(apiErrors);
-client.register.registerMetric(balanceUpdates);
-client.register.registerMetric(candleDataRequests);
+// WebSocket metrics
+export const wsConnections = new client.Gauge({
+  name: 'websocket_connections_total',
+  help: 'Number of active WebSocket connections',
+});
+
+export const wsMessages = new client.Counter({
+  name: 'websocket_messages_total',
+  help: 'Total number of WebSocket messages',
+  labelNames: ['direction', 'type'], // direction: 'in', 'out'; type: 'subscribe', 'unsubscribe', 'data'
+});
+
+export { client as promClient };
+export const register = client.register;
+
+// Utility to collect default metrics
+export function collectDefaultMetrics() {
+  client.collectDefaultMetrics({ register: client.register });
+}

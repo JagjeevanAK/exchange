@@ -1,4 +1,4 @@
-import type { User as PrismaUser } from '../prisma/generated/prisma/client';
+import type { User as PrismaUser } from '@exchange/db';
 
 export interface JWTPayload {
   userId: string;

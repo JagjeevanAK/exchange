@@ -1,25 +1,24 @@
+import { notificationConfig, redisConfig } from '@exchange/config';
+import { createRedisClient } from '@exchange/redis';
 import { Worker, type Job } from 'bullmq';
-import Redis from 'ioredis';
 import { Resend } from 'resend';
 import twilio from 'twilio';
 import { smsTemplete } from './templetes/smsTemplete';
 import { emailTemplate } from './templetes/emailTemplete';
 
-const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+const redisConnection = createRedisClient();
 
-const resend = new Resend(process.env.RESEND_API_KEY as string);
-const fromEmail = process.env.FROM_EMAIL || 'noreply@yourdomain.com';
+const resend = new Resend(notificationConfig.resendApiKey);
+const fromEmail = notificationConfig.fromEmail;
 
 let twilioClient: ReturnType<typeof twilio> | null = null;
 if (
-  process.env.TWILIO_ACCOUNT_SID &&
-  process.env.TWILIO_AUTH_TOKEN &&
-  process.env.TWILIO_ACCOUNT_SID !== 'your-twilio-sid' &&
-  process.env.TWILIO_AUTH_TOKEN !== 'your-twilio-token'
+  notificationConfig.twilioAccountSid &&
+  notificationConfig.twilioAuthToken &&
+  notificationConfig.twilioAccountSid !== 'your-twilio-sid' &&
+  notificationConfig.twilioAuthToken !== 'your-twilio-token'
 ) {
-  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  twilioClient = twilio(notificationConfig.twilioAccountSid, notificationConfig.twilioAuthToken);
   console.log('Twilio client initialized for SMS notifications');
 } else {
   console.warn('Twilio credentials not configured. SMS notifications will be disabled.');

@@ -1,7 +1,6 @@
-import { prisma } from './prsimaClient';
-import { Status, OrderType } from '../prisma/generated/prisma/client';
+import { prisma, Status, OrderType } from '@exchange/db';
+import { initSubscriber as initRedisSubscriber, subscribeToMultiplePrices, getLatestPrice } from '@exchange/redis';
 import { sendNotification } from './notification-queue';
-import { initRedisSubscriber, subscribeToMultiplePrices, getLatestPrice } from './redisSubscriber';
 
 // Symbols to monitor - these should match the poller's subscriptions
 const MONITORED_SYMBOLS = [

@@ -1,25 +1,21 @@
-import { configDotenv } from 'dotenv';
+import '@exchange/config';
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import passport from './lib/passport';
 import router from './routes';
-import client from 'prom-client';
+import { serverConfig, authConfig } from '@exchange/config';
+import { collectDefaultMetrics, register, httpRequestDuration, httpRequestTotal } from '@exchange/monitoring';
 import { startPriceMonitor } from './lib/priceMonitor';
 
-configDotenv();
 const app = express();
-const PORT = parseInt(process.env.PORT || '3001');
+const PORT = serverConfig.port;
 
-const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics({ register: client.register });
+collectDefaultMetrics();
 
 app.use((req, res, next) => {
   const startTime = Date.now();
-
-  const { httpRequestDuration, httpRequestTotal } = require('./metrics/prometheus');
-
   const originalEnd = res.end.bind(res);
 
   res.end = function (...args: any[]) {
@@ -40,8 +36,8 @@ app.use((req, res, next) => {
 
 app.get('/metrics', async (req, res) => {
   try {
-    res.setHeader('Content-Type', client.register.contentType);
-    const metrics = await client.register.metrics();
+    res.setHeader('Content-Type', register.contentType);
+    const metrics = await register.metrics();
     res.send(metrics);
   } catch (ex) {
     res.status(500).end(ex);

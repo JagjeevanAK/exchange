@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { getCandles, getAvailableSymbols, getLatestCandle, getDebugInfo } from '../lib/candles';
-import { candleDataRequests, databaseQueryDuration, apiErrors } from '../metrics/prometheus';
+import { candleDataRequests, databaseQueryDuration, apiErrors } from '@exchange/monitoring';
 
 const router = Router();
 
